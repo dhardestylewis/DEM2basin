@@ -28,6 +28,7 @@ Shamelessly stolen from [todo.md](https://raw.githubusercontent.com/todomd/todo.
 - [ ] Possibly include each detail used by [OpenTopography](https://portal.opentopography.org/datasetMetadata?otCollectionID=OT.092020.2193.2) for its datasets
 - [ ] Include [AAAI slides](https://www.dropbox.com/scl/fi/0opj6ff7cjyh0gpc2ettm/HANDEdits_PA-MINT.pptx?dl=0&rlkey=70qk5cxlyz04qvr74uwedwj1d) (they are draft) (slides 13-15 in this draft)
 - [ ] Replace AAAI draft slides with final from Yolanda Gil
+- [ ] Include [video and slides](https://csdms.colorado.edu/wiki/Presenters-0473) from Dr Pierce's keynote speech at CSDMS
 
 ### In Progress
 
