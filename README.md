@@ -52,7 +52,7 @@ There are 4 outputs per HUC12.
     * organized by flowline using their [ComIDs](https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Data_Dictionary/Data_Dictionary.htm) 
     * vary by stream order
 Here is an example of these outputs, originally visualized by [Prof David Maidment](https://www.caee.utexas.edu/faculty/directory/maidment).
-![Example outputs](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/DEM-HUC12-Outputs_example.png)
+![Example outputs](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/DEM-HUC12-Outputs_example.jpg)
 
 ## Already preprocessed DEMs
 Already preprocessed DEMs are now available for the vast majority of Texas's HUC12s if you are a [TACC user](https://portal.tacc.utexas.edu/). You can request a TACC account [here](https://portal.tacc.utexas.edu/account-request).
