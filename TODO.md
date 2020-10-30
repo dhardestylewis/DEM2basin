@@ -12,6 +12,9 @@ Shamelessly stolen from [todo.md](https://raw.githubusercontent.com/todomd/todo.
 - [ ] Add sponsor info (TACC, CWE, NOAA, etc)
 - [ ] Include Tim Whiteaker write-up about cross-UTM, attribute him, "not definitive, but guiding"
 - [ ] Include Alec Carruthers write-up about Manning's values, attribute him, attribute him for original workflow design
+- [ ] Reference presentation to PT2050 inaugural annual workshop, provide recording if available
+- [ ] Reference downstream projects such as HAND-TauDEM and Flooded_lots
+- [ ] Reference outgoing president AAAI's address of downstream Flooded_lots work
 
 ### In Progress
 
