@@ -72,4 +72,5 @@ These HUC12 DEMs have been successfully preprocessed in the past, and will soon 
 ![Confirmed HUC12 DEMs](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/DEM-HUC12-Confirmed.png)
 
 ## Preprocessing workflow
-If you would like an understanding of the preprocessing workflow, I provide a simplified but representative example in this [Jupyter notebook](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/GeoFlood-Preprocessing.ipynb).
+If you would like an understanding of the preprocessing workflow, I provide a simplified but representative example in this [Jupyter notebook](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/GeoFlood-Preprocessing.ipynb). This Jupyter notebook was presented at the inaugural [TACC Institute on Planet Texas 2050 Cyberecosystem Tools](https://bridgingbarriers.utexas.edu/pt2050-tacc-institute/) in August, 2020.
+
