@@ -224,20 +224,13 @@ def buffer(catchshu12shape):
 
         shape.to_crs('epsg:4326',inplace=True)
 
-        shape['min'] = list(zip(shape.bounds['miny'],shape.bounds['minx']))
-        uniq_min = shape['min'].apply(lambda x: utm.latlon_to_zone_number(*x)).unique()
-        shape.drop(columns=['min'],inplace=True)
+        ## TODO: make this majority count an option
+        ##  and bring back cross-utm error as default behaviour
+        uniq = shape.representative_point().apply(lambda p: utm.latlon_to_zone_number(p.y,p.x)).value_counts().idxmax()
 
-        shape['max'] = list(zip(shape.bounds['maxy'],shape.bounds['maxx']))
-        uniq_max = shape['max'].apply(lambda x: utm.latlon_to_zone_number(*x)).unique()
-        shape.drop(columns=['max'],inplace=True)
-        #del(shape)
-
-        uniq = np.unique(np.append(uniq_min,uniq_max))
-        #del(uniq_min,uniq_max)
-        if uniq.shape[0] > 1:
-            print("ERROR: Cross-UTM input shapefile not yet supported.")
-            sys.exit(0)
+        #if uniq.shape[0] > 1:
+        #    print("ERROR: Cross-UTM input shapefile not yet supported.")
+        #    sys.exit(0)
 
         return(uniq)
 
@@ -246,26 +239,27 @@ def buffer(catchshu12shape):
 
     ## Are the catchments all within the same UTM?
     uniq = unique(hu12catchs)
+    print(type(uniq))
 
     ## Buffer the HUC12 catchments
     if hu12catchs.crs.datum.name=='World Geodetic System 1984':
         #crs = CRS(proj='utm', zone=uniq[0], datum='WGS84')
-        if uniq[0]==13:
+        if uniq==13:
             crs = 'epsg:32613'
-        elif uniq[0]==14:
+        elif uniq==14:
             crs = 'epsg:32614'
-        elif uniq[0]==15:
+        elif uniq==15:
             crs = 'epsg:32615'
         else:
             print("ERROR: UTMs outside of 13-15 not yet supported.")
             sys.exit(0)
     elif hu12catchs.crs.datum.name=='North American Datum 1983' or hu12catchs.crs.datum.name=='D_NORTH_AMERICAN_1983' or hu12catchs.crs.datum.name=='NAD83 (National Spatial Reference System 2011)':
         #crs = CRS(proj='utm', zone=uniq[0], datum='NAD83')
-        if uniq[0]==13:
+        if uniq==13:
             crs = 'epsg:6342'
-        elif uniq[0]==14:
+        elif uniq==14:
             crs = 'epsg:6343'
-        elif uniq[0]==15:
+        elif uniq==15:
             crs = 'epsg:6344'
         else:
             print("ERROR: UTMs outside of 13-15 not yet supported.")

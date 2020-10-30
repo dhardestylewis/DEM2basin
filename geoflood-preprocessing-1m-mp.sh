@@ -32,8 +32,17 @@ module unload python2
 eval "$(conda shell.bash hook)" ## Properly initialise non-interactive shell
 conda activate geoflood-pre
 
-PREPROC='/scratch/04950/dhl/GeoFlood/preprocessing'
-python3 "$PREPROC/scripts/geoflood-preprocessing-1m-mp.py" --nhd "$PREPROC/data/NFIEGeo_TX.gdb" --huc12 "$PREPROC/data/WBD_National_GDB/WBD_National_GDB.shp/WBDHU12.shp" --shapefile "$PREPROC/data/TX-UTM14-.6.shp/TX-UTM14-.6.shp" --raster '/scratch/projects/tnris/tnris-lidardata' --availability "$PREPROC/data/TNRIS-LIDAR-Availability-20200219.shp/TNRIS-LIDAR-Availability-20200219.shp" --directory "$PREPROC/data/TX-UTM14-.5-1m-GeoFlood/" --restart "$PREPROC/data/TX-UTM14-.5-1m-GeoFlood/TX-UTM14-.6-1m-GeoFlood.pkl"
+PREPROC_WORK='${PREPROC_WORK}'
+PREPROC_SCRATCH='/scratch/04950/dhl/GeoFlood-preprocessing'
+PREPROC_TNRIS='/scratch/projects/tnris'
+python3 "${PREPROC_SCRATCH}/geoflood-preprocessing-1m-mp-utm.py" \
+    --shapefile "${PREPROC_SCRATCH}/TXDoT-TX_boundary.shp/TXDoT-TX_boundary.shp" \
+    --huc12 "${PREPROC_WORK}/WBD-HU12-TX.shp/WBD-HU12-TX.shp" \
+    --nhd "${PREPROC_WORK}/NFIEGeo_TX.gdb" \
+    --raster "${PREPROC_TNRIS}/tnris-lidardata" \
+    --availability "${PREPROC_WORK}/TNRIS-LIDAR-Availability-20200219.shp/TNRIS-LIDAR-Availability-20200219.shp" \
+    --directory "${PREPROC_TNRIS}/dhl-flood-modelling/TX-HUC12-DEM_outputs" \
+    --restart "${PREPROC_SCRATCH}/geoflood-preprocessing-TX.pickle"
 
 #if [ "x$TACC_RUNTIME" != "x" ]; then
 #    # there's a runtime limit, so warn the user when the session will die
