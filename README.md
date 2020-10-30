@@ -61,3 +61,6 @@ Already preprocessed DEMs are now available for the vast majority of Texas's HUC
 The DEMs are located on [Stampede2](https://www.tacc.utexas.edu/systems/stampede2) at `/scratch/projects/tnris/dhl-flood-modelling/TX-HUC12-DEM_outputs`.
 ### If you run into trouble
 Please [submit a ticket](https://portal.tacc.utexas.edu/tacc-consulting) if you have trouble accessing this data. You may also contact me directly at [@dhardestylewis](https://github.com/dhardestylewis) or <dhl@tacc.utexas.edu>
+
+## Preprocessing workflow
+If you would like an understanding of the preprocessing workflow, I provide a simplified but representative example in this [Jupyter notebook](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/GeoFlood-Preprocessing.ipynb).
