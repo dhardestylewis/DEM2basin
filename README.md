@@ -51,6 +51,8 @@ There are 4 outputs per HUC12.
 * _Manning's n roughness table:_
     * organized by flowline using their [ComIDs](https://nhd.usgs.gov/userGuide/Robohelpfiles/NHD_User_Guide/Feature_Catalog/Data_Dictionary/Data_Dictionary.htm) 
     * vary by stream order
+Here is an example of these outputs, originally visualized by [Prof David Maidment](https://www.caee.utexas.edu/faculty/directory/maidment).
+![Example outputs](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/DEM-HUC12-Outputs_example.png)
 
 ## Already preprocessed DEMs
 Already preprocessed DEMs are now available for the vast majority of Texas's HUC12s if you are a [TACC user](https://portal.tacc.utexas.edu/). You can request a TACC account [here](https://portal.tacc.utexas.edu/account-request).
@@ -63,6 +65,7 @@ The DEMs are located on [Stampede2](https://www.tacc.utexas.edu/systems/stampede
 Please [submit a ticket](https://portal.tacc.utexas.edu/tacc-consulting) if you have trouble accessing this data. You may also contact me directly at [@dhardestylewis](https://github.com/dhardestylewis) or <dhl@tacc.utexas.edu>
 ### Available preprocessed HUC12s
 These HUC12 DEMs are available right now on [Stampede2](https://www.tacc.utexas.edu/systems/stampede2).
+![Available HUC12 DEMs](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/DEM-HUC12-Availability.png)
 ### Confirmed successfully preprocessed HUC12s
 These HUC12 DEMs have been successfully preprocessed in the past, and will soon be available once again on [Stampede2](https://www.tacc.utexas.edu/systems/stampede2). If you need any of these _right now_, please contact me.
 ![Confirmed HUC12 DEMs](https://github.com/dhardestylewis/GeoFlood-preprocessing/blob/master/DEM-HUC12-Confirmed.png)
