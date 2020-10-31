@@ -1,5 +1,9 @@
 # GeoFlood-preprocessing
-Preprocessing scripts to produce watershed-delineated input files to [GeoFlood](https://github.com/passaH2O/GeoFlood) from standard source data
+This preprocessing script takes source 1-meter digital elevation model (DEM) data and splits, crops, buffers, and reprojects it to individual hydrologic basins (identified by their unique identifier, the "HUC12" ID).
+
+This preprocessing script also produces ancillary data products corresponding to each new HUC12 DEM raster to describe their sub-basins (ie "catchments"), their streams  (ie "flowlines"), and the roughness of each streambed.
+
+Taken together, these are the major inputs needed to run [GeoFlood](https://github.com/passaH2O/GeoFlood), which creates short-term flood projections.
 
 ## Main Python script
 The recommended way to run `geoflood-preprocessing-1m-mp.py`:
@@ -16,21 +20,21 @@ python3 geoflood-preprocessing-1m-mp.py \
 
 ## Required source data inputs
 There are 5 required inputs.
-* `--shapefile` _Study area polygon vector GIS file:_ this is a vector GIS file of a single polygon which defines the study area
-* `--huc12` _[USGS Watershed Boundary Dataset (WBD)](https://www.usgs.gov/core-science-systems/ngp/national-hydrography/watershed-boundary-dataset):_ this is a HUC12 vector GIS file from USGS WBD, either whole or subset
-* `--nhd` _[NHD Medium Resolution (MR)](https://www.usgs.gov/core-science-systems/ngp/hydrography/about/nhd-medium-resolution):_ this is a GeoDataBase of NHD MR catchments and flowlines
-* `--raster` _[TNRIS Lidar](https://tnris.org/stratmap/elevation-lidar/):_ this is the parent directory to a collection of TNRIS Lidar datasets
-* `--availability` _[TNRIS Lidar availability](https://data.tnris.org/5751f066-28be-46af-b795-08387a27da6e/resources/tnris-lidar_48_vector.zip):_ this is a vector GIS file of TNRIS Lidar availability, provided by TNRIS [here](https://tnris.org/stratmap/elevation-lidar/)
+* `--shapefile` _Study area polygon vector GIS file:_ a vector GIS file of a single polygon which defines the study area
+* `--huc12` _[USGS Watershed Boundary Dataset (WBD)](https://www.usgs.gov/core-science-systems/ngp/national-hydrography/watershed-boundary-dataset):_ a HUC12 vector GIS file from USGS's WBD or a subset of the WBD
+* `--nhd` _[NHD Medium Resolution (MR)](https://www.usgs.gov/core-science-systems/ngp/hydrography/about/nhd-medium-resolution):_ a GeoDataBase of NHD MR catchments and flowlines
+* `--raster` _[TNRIS Lidar](https://tnris.org/stratmap/elevation-lidar/):_ the parent directory to a collection of TNRIS Lidar datasets
+* `--availability` _[TNRIS Lidar availability](https://data.tnris.org/5751f066-28be-46af-b795-08387a27da6e/resources/tnris-lidar_48_vector.zip):_ a vector GIS file of TNRIS Lidar availability, provided by TNRIS [here](https://tnris.org/stratmap/elevation-lidar/)
 
 ## Optional parameters
-* `--directory` _Outputs directory:_ this is a directory to store outputs, sorted by HUC12
-* `--restart` _Restart file:_ this is a [Python Pickle file](https://docs.python.org/3/library/pickle.html) from which you can restart the preprocessing if it's interrupted
+* `--directory` _Outputs directory:_ a directory to store outputs, which will each be sorted by HUC12
+* `--restart` _Restart file:_ a [Python Pickle file](https://docs.python.org/3/library/pickle.html) from which you can restart the preprocessing if it's interrupted
 * `--overwrite` _Overwrite flag:_ optional flag to overwrite all files found in output directory
 * `--overwrite_rasters` _Overwrite rasters flag:_ optional flag to overwrite just the raster outputs
 * `--overwrite_flowlines` _Overwrite flowlines flag:_ optional flag to overwrite just the flowline outputs
 * `--overwrite_catchments` _Overwrite catchments flag:_ optional flag to overwrite just the catchment outputs
 * `--overwrite_roughnesses` _Overwrite roughness table flag:_ optional flag to overwrite the roughness table
-* `--log` _Log file:_ file to store runtime log
+* `--log` _Log file:_ a file to store runtime log
 
 ## Description of outputs
 There are 4 outputs per HUC12.
