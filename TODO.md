@@ -29,6 +29,8 @@ Shamelessly stolen from [todo.md](https://raw.githubusercontent.com/todomd/todo.
 - [ ] Include [AAAI slides](https://www.dropbox.com/scl/fi/0opj6ff7cjyh0gpc2ettm/HANDEdits_PA-MINT.pptx?dl=0&rlkey=70qk5cxlyz04qvr74uwedwj1d) (they are draft) (slides 13-15 in this draft)
 - [ ] Replace AAAI draft slides with final from Yolanda Gil
 - [ ] Include [video and slides](https://csdms.colorado.edu/wiki/Presenters-0473) from Dr Pierce's keynote speech at CSDMS
+- [ ] Check for slivers of nodata in HUC12 DEMs outside of UTM 14N -- report back results to the CWE
+- [ ] For buffered HUC12s entirely outside of UTM 14N, replace the UTM 14N HUC12 DEMs with HUC12 DEMs in their respective UTMs (13N & 15N)
 
 ### In Progress
 
