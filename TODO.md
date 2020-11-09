@@ -31,6 +31,8 @@ Shamelessly stolen from [todo.md](https://raw.githubusercontent.com/todomd/todo.
 - [ ] Include [video and slides](https://csdms.colorado.edu/wiki/Presenters-0473) from Dr Pierce's keynote speech at CSDMS
 - [ ] Check for slivers of nodata in HUC12 DEMs outside of UTM 14N -- report back results to the CWE
 - [ ] For buffered HUC12s entirely outside of UTM 14N, replace the UTM 14N HUC12 DEMs with HUC12 DEMs in their respective UTMs (13N & 15N)
+- [ ] Regroup this repository into CWE group's
+- [ ] Link against existing CWE repositories where appropriate
 
 ### In Progress
 
