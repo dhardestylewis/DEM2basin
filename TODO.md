@@ -1,5 +1,5 @@
 # TODO file
-Shamelessly stolen from [todo.md](https://raw.githubusercontent.com/todomd/todo.md/master/TODO.md)
+File template shamelessly stolen from [todo.md](https://raw.githubusercontent.com/todomd/todo.md/master/TODO.md)
 
 ### ToDo
 
