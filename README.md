@@ -1,4 +1,4 @@
-# GeoFlood-preprocessing
+# DEM to basin preprocessing
 This preprocessing script takes source 1-meter digital elevation model (DEM) data and splits, crops, buffers, and reprojects it to individual hydrologic basins (identified by their unique identifier, the "HUC12" ID).
 
 This preprocessing script also produces ancillary data products corresponding to each new HUC12 DEM raster to describe their sub-basins (ie "catchments"), their streams  (ie "flowlines"), and the roughness of each streambed.
