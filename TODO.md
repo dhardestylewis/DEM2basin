@@ -33,6 +33,8 @@ File template shamelessly stolen from [todo.md](https://raw.githubusercontent.co
 - [ ] For buffered HUC12s entirely outside of UTM 14N, replace the UTM 14N HUC12 DEMs with HUC12 DEMs in their respective UTMs (13N & 15N)
 - [ ] Regroup this repository into CWE group's
 - [ ] Link against existing CWE repositories where appropriate
+- [ ] In QAQC error-file generation: distinguish nodata from >1m data instances
+- [ ] Produce visualization of where I will not be providing preprocessed HUC12s because of known errors or constraints imposed on this project
 
 ### In Progress
 
