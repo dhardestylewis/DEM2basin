@@ -35,6 +35,7 @@ File template shamelessly stolen from [todo.md](https://raw.githubusercontent.co
 - [ ] Link against existing CWE repositories where appropriate
 - [ ] In QAQC error-file generation: distinguish nodata from >1m data instances
 - [ ] Produce visualization of where I will not be providing preprocessed HUC12s because of known errors or constraints imposed on this project
+- [ ] Dividing and distributing GeoDataFrames across subsequent runs for initial data set-up
 
 ### In Progress
 
