@@ -40,6 +40,7 @@ File template shamelessly stolen from [todo.md](https://raw.githubusercontent.co
 ### In Progress
 
 - [ ] Modify routine to tolerate lower resolution DEM where necessary
+- [ ] DOI & example citation in `README.md`
 
 ### Done ✓
 
