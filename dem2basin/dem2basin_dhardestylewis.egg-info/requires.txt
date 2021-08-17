@@ -1,0 +1,17 @@
+utm
+tblib
+descartes
+fiona
+numpy
+matplotlib
+scipy
+memory_profiles
+geopandas
+pandas
+rasterio
+pyproj
+contextily
+xlrd
+openpyxl
+rio-tiler
+terracotta
