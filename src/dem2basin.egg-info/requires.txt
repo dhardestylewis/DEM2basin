@@ -5,7 +5,6 @@ fiona
 numpy
 matplotlib
 scipy
-memory_profiles
 geopandas
 pandas
 rasterio
@@ -16,3 +15,5 @@ openpyxl
 rio-tiler
 terracotta
 pandas
+memory_profiler
+psutil

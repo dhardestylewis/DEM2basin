@@ -1,9 +1,0 @@
-LICENSE
-README.md
-pyproject.toml
-setup.cfg
-dem2basin/dem2basin_dhardestylewis.egg-info/PKG-INFO
-dem2basin/dem2basin_dhardestylewis.egg-info/SOURCES.txt
-dem2basin/dem2basin_dhardestylewis.egg-info/dependency_links.txt
-dem2basin/dem2basin_dhardestylewis.egg-info/requires.txt
-dem2basin/dem2basin_dhardestylewis.egg-info/top_level.txt

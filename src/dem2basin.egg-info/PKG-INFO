@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
-Name: dem2basin-dhardestylewis
-Version: 0.2.1
+Name: dem2basin
+Version: 0.2.4.2
 Summary: Tools to derive HUC-cropped DEMs from common DEM datasets
 Home-page: https://github.com/dhardestylewis/DEM2basin
 Author: Daniel Hardesty Lewis
