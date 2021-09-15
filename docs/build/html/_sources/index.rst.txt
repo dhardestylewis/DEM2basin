@@ -11,6 +11,7 @@ Welcome to ``dem2basin``'s documentation!
    :caption: Contents:
 
    intro
+   modules
    dem2basin
 
 Indices and tables
