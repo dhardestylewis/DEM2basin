@@ -3,15 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to dem2basin's documentation!
-=====================================
+Welcome to ``dem2basin``'s documentation!
+=========================================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-intro
-dem2basin
+   intro
+   dem2basin
 
 Indices and tables
 ==================
