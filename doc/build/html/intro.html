@@ -1,0 +1,159 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Introduction &#8212; dem2basin 0.9.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">dem2basin</span></code> is Python package to simplify common surface hydrology data preparation steps.</p>
+<p>Numerous functions are provided to:
+- accomplish common vector and raster processing workflows in GeoPandas and GDAL/OGR
+- accomplish higher-level hydrology data processing goals</p>
+<section id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>It is common for hydrologists to spend some time preparing raster and vector source data for study at the individual watershed level. Once the source data is prepared, they can then generate HAND or other common terrain model. These preparation steps are largely similar or the same each and every time the hydrologist needs generate a terrain model from source data. This package provided functions to simplify these common preparation steps.</p>
+</section>
+<section id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline">¶</a></h2>
+<p>This packages has only been thoroughly tested against Texas Lidar raster data, NHD vector flowline and catchment data, and WBD vector HUC watershed data.</p>
+<dl class="simple">
+<dt>There are a number of proposed extensions, including:</dt><dd><ul class="simple">
+<li><p>to NED 10m raster data</p></li>
+<li><p>to FIM / Fathom 3m raster data</p></li>
+<li><p>to non-WBD and non-NHD watershed data, for example internationally</p></li>
+<li><p>to Texas Lidar hypsography vector data</p></li>
+<li><p>to Texas Lidar point-cloud data</p></li>
+</ul>
+</dd>
+</dl>
+<p>Below I only include the most thoroughly vetted <code class="docutils literal notranslate"><span class="pre">dem2basin</span></code> functions. These are the vector data processing functions.</p>
+<p>While there are workable raster data processing functions, they are currently being significantly refactored, with nearly every existing function being deprecated in favor of entirely different approaches.</p>
+</section>
+<section id="hydrology-data-processing-functions">
+<h2>Hydrology data processing functions<a class="headerlink" href="#hydrology-data-processing-functions" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">get_hucs_by_shape</span></code> finds HUCs that intersect a study area given as a vector image</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_flowlines_and_representative_points_by_huc</span></code> assigns HUCs to NHD flowlines and their representative points, returning both</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_representative_points</span></code> retrieve representative points of flowlines and assign HUCs to these points</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_roughness_by_streamorder</span></code> assign Manning’s n roughness value by each flowline’s stream order</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_catchments_by_huc</span></code> assigns HUCs to NHD catchments</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_index_by_huc</span></code> returns a geodataframe with its index set to its HUC column</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">find_huc_level</span></code> finds the name of the HUC column of a geodataframe</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_nhd_by_shape</span></code> retrieves specific NHD layer masked by another geodataframe</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_hucs_from_catchments</span></code> dissolves NHD catchments into HUC equivalents</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">write_rougness_table</span></code> write Manning’s n roughness table to CSV filename or concrete path</p></li>
+</ul>
+</section>
+<section id="core-vector-and-raster-processing-functions">
+<h2>Core vector and raster processing functions<a class="headerlink" href="#core-vector-and-raster-processing-functions" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">reproject_to_utm_and_buffer</span></code> finds best UTM for a geodataframe, reprojects, and then buffers it</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">find_utm</span></code> finds a single UTM CRS best suited for the geometries of a geodataframe</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">find_common_utm</span></code> determines the mode of the UTMs of the representative points of a geodataframe’s geometries</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reproject_and_buffer</span></code> reprojects geodataframe to a CRS and then buffers it</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">write_geodataframe</span></code> write geodataframe to filename or concrete path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">to_crs</span></code> reprojects multiples geodataframes simultaneously</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_drop_index_columns</span></code> drops columns named <code class="docutils literal notranslate"><span class="pre">'index'</span></code>, <code class="docutils literal notranslate"><span class="pre">'index_left'</span></code>, and <code class="docutils literal notranslate"><span class="pre">'index_right'</span></code> either to prevent issues with <code class="docutils literal notranslate"><span class="pre">geopandas</span></code> functions like <code class="docutils literal notranslate"><span class="pre">geopandas.sjoin</span></code> and to clean up after some <code class="docutils literal notranslate"><span class="pre">geopandas</span></code> functions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">clip_geodataframe_by_attribute</span></code> assign attribute from one geodataframe to another by their mutual index values</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">set_and_sort_index</span></code> sets a geodataframe’s index to column and sorts by that column</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">read_file_or_gdf</span></code> enables functions to take either filenames or geodataframes as inputs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_merged_column</span></code> returns the mutual elements of an identically names column in multiple dataframes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">index_dataframe_by_dataframe</span></code> indexes a dataframe by another dataframe</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">skip_function_if_file_exists</span></code> wrapper to skip a particular step in a workflow if a file already exists</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">delete_file</span></code> deletes a file in all versions of Python</p></li>
+</ul>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">dem2basin</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Daniel Hardesty Lewis.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/intro.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
