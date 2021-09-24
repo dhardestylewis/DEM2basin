@@ -27,6 +27,7 @@ from rasterio.features import shapes
 from rasterio.crs import CRS
 
 #from pyproj import CRS
+import pyproj
 
 import os
 from pathlib import Path
@@ -35,7 +36,7 @@ import shutil
 from threading import Thread
 from collections import deque
 import multiprocessing
-from itertools import repeat
+from itertools import repeat,cycle
 from functools import reduce
 import uuid
 
@@ -214,6 +215,9 @@ def argparser():
     return(args)
 
 def _drop_index_columns(shape_original):
+    """
+    drops columns named 'index', 'index_left', and 'index_right' either to prevent issues with geopandas functions like geopandas.sjoin and to clean up after some geopandas functions
+    """
 
     shape = shape_original.drop(
         columns = [
@@ -227,6 +231,9 @@ def _drop_index_columns(shape_original):
     return(shape)
 
 def find_huc_level(shape_original):
+    """
+    returns a geodataframe with its index set to its HUC column
+    """
 
     regexp = re.compile('HUC[0-9]*')
     huc_level = list(filter(
@@ -247,6 +254,9 @@ def set_index_to_huc(shape_original,sort=True):
     return(shape)
 
 def read_file_or_gdf(shape_input,**kwargs):
+    """
+    enables functions to take either filenames or geodataframes as inputs
+    """
 
     if isinstance(shape_input,str):
         shape = gpd.read_file(shape_input,**kwargs)
@@ -264,6 +274,9 @@ def get_hucs_by_shape(
     to_utm = True,
     drop_index_columns = True
 ):
+    """
+    finds HUCs that intersect a study area given as a vector image
+    """
     ## Find the HUCs that intersect with the input polygon
 
     #shape_input = 'data/TX-Counties/Young/TX-County-Young.shp'
@@ -304,6 +317,9 @@ def set_and_sort_index(
     column,
     drop = True,
 ):
+    """
+    sets a geodataframe’s index to column and sorts by that column
+    """
 
     dataframe.set_index(column,inplace=True,drop=drop)
     dataframe.sort_index(inplace=True)
@@ -311,6 +327,9 @@ def set_and_sort_index(
     return(dataframe)
 
 def index_dataframe_by_dataframe(dataframe_left,dataframe_right):
+    """
+    indexes a dataframe by another dataframe
+    """
 
     dataframe = dataframe_left[
         dataframe_left.index.isin(dataframe_right.index)
@@ -326,6 +345,9 @@ def get_nhd_by_shape(
     comid_column = None,
     fix_invalid_geometries = False
 ):
+    """
+    retrieves specific NHD layer masked by another geodataframe
+    """
     ## Identify flowlines of each HUC
 
     #nhd_file = 'data/NFIEGeo_12.gdb'
@@ -344,7 +366,15 @@ def get_nhd_by_shape(
 
     return(geodataframe)
 
-def get_representative_points(flowlines,hucs,drop_index_columns=True):
+def get_representative_points(
+    flowlines,
+    hucs,
+    drop_index_columns = True,
+    set_index_to_comid = False
+):
+    """
+    retrieve representative points of flowlines and assign HUCs to these points
+    """
 
     flowline_representative_points = flowlines.copy()
     flowline_representative_points['geometry'] = flowlines.representative_point()
@@ -368,12 +398,13 @@ def get_representative_points(flowlines,hucs,drop_index_columns=True):
             flowline_representative_points
         )
 
-    flowline_representative_points = set_and_sort_index(
-        flowline_representative_points,
-        'COMID',
-        drop = False
-    )
-
+    if set_index_to_comid:
+        flowline_representative_points = set_and_sort_index(
+            flowline_representative_points,
+            'COMID',
+            drop = False
+        )
+    
     return(flowline_representative_points)
 
 def set_roughness_by_streamorder(
@@ -381,6 +412,9 @@ def set_roughness_by_streamorder(
     streamorder_col = 'StreamOrde',
     roughness_col = 'Roughness'
 ):
+    """
+    assign Manning’s n roughness value by each flowline’s stream order
+    """
 
     flowlines = flowlines_original.copy()
 
@@ -400,6 +434,9 @@ def clip_geodataframe_by_attribute(
     geodataframe_with_attribute,
     attribute = None
 ):
+    """
+    assign attribute from one geodataframe to another by their mutual index values
+    """
 
     ## Find the flowlines corresponding with these catchments
     ##  (Note: this line is optional.
@@ -419,6 +456,9 @@ def clip_geodataframe_by_attribute(
     return(geodataframe)
 
 def find_common_utm(shape_original):
+    """
+    determines the mode of the UTMs of the representative points of a geodataframe’s geometries
+    """
     ## Determine whether the administrative division is within a single UTM
 
     shape = shape_original.to_crs('epsg:4326')
@@ -436,6 +476,9 @@ def find_common_utm(shape_original):
     return(output_utm)
 
 def find_utm(gdf_original,select_utm=None):
+    """
+    finds a single UTM CRS best suited for the geometries of a geodataframe
+    """
     ## Buffer the catchments for each HUC
 
     gdf = gdf_original.reset_index()
@@ -482,6 +525,9 @@ def find_utm(gdf_original,select_utm=None):
     return(crs)
 
 def reproject_and_buffer(gdf_original,crs,meters_buffered=500.):
+    """
+    reprojects geodataframe to a CRS and then buffers it
+    """
 
     gdf = gdf_original.to_crs(crs)
     gdf['geometry'] = gdf.buffer(meters_buffered)
@@ -490,6 +536,9 @@ def reproject_and_buffer(gdf_original,crs,meters_buffered=500.):
     return(gdf)
 
 def reproject_to_utm_and_buffer(gdf_original,select_utm=None):
+    """
+    finds best UTM for a geodataframe, reprojects, and then buffers it
+    """
     ## Reproject a GeoDataFrame to the most common UTM and then buffer it
 
     crs = find_utm(gdf_original,select_utm)
@@ -754,6 +803,9 @@ class ExceptionWrapper(object):
         raise(self.ee.with_traceback(self.tb))
 
 def delete_file(filename):
+    """
+    deletes a file in all versions of Python
+    """
 
     try:
         Path(str(filename)).unlink(missing_ok=True)
@@ -764,6 +816,9 @@ def delete_file(filename):
         pass
 
 def skip_function_if_file_exists(function,filename,skip_existing=True):
+    """
+    wrapper to skip a particular step in a workflow if a file already exists
+    """
 
     filename = Path(str(filename))
     if not (
@@ -793,6 +848,9 @@ def write_geodataframe(
     reset_index = True,
     driver = 'ESRI Shapefile'
 ):
+    """
+    write geodataframe to filename or concrete path
+    """
 
     skip_function_if_file_exists(
         _write_geodataframe(
@@ -840,6 +898,9 @@ def write_roughness_table(
     column = None,
     sort = True
 ):
+    """
+    write Manning’s n roughness table to CSV filename or concrete path
+    """
 
     skip_function_if_file_exists(
         _write_roughness_table(
@@ -894,6 +955,9 @@ def get_flowlines_and_representative_points_by_huc(hucs,nhd_input):
     return(flowlines,flowline_representative_points)
 
 def get_catchments_by_huc(hucs,nhd_input,flowline_representative_points):
+    """
+    assigns HUCs to NHD catchments
+    """
 
     catchments = get_nhd_by_shape(
         hucs,
@@ -912,6 +976,9 @@ def get_catchments_by_huc(hucs,nhd_input,flowline_representative_points):
     return(catchments)
 
 def get_hucs_from_catchments(catchments):
+    """
+    dissolves NHD catchments into HUC equivalents
+    """
 
     hucs = catchments.dissolve(by='HUC')
     hucs.reset_index(inplace=True)
@@ -920,6 +987,9 @@ def get_hucs_from_catchments(catchments):
     return(hucs)
 
 def to_crs(crs,geodataframes):
+    """
+    reprojects multiples geodataframes simultaneously
+    """
 
     for geodataframe in geodataframes:
         geodataframe.to_crs(crs,inplace=True)
@@ -1036,7 +1106,7 @@ def build_vrt(filenames,vrt_filename,lowest_resolution=False):
         #separate=True
     )
 
-    vrt = gdal.BuildVRT(vrt_filename,filenames,options=vrt_options)
+    vrt = gdal.BuildVRT(str(vrt_filename),filenames,options=vrt_options)
     vrt = None
 
 def build_vrts(lidar_index,vrt_filename_template,lowest_resolution=False):
@@ -1061,21 +1131,275 @@ def build_vrts(lidar_index,vrt_filename_template,lowest_resolution=False):
 
     return(lidar_index)
 
-def reproject_raster(filename,reprojected_filename,dst_crs=None):
+def reproject_raster(
+    filename,
+    reprojected_filename,
+    raster_mask_filename = None,
+    dst_crs = None
+):
 
     if dst_crs is not None:
         dst_crs = str(dst_crs)
 
+    if raster_mask_filename is not None:
+        crop_to_mask_file = True
+    else:
+        crop_to_mask_file = False
+
     raster = gdal.Open(str(filename))
 
-    warp = gdal.Warp(str(reprojected_filename),raster,dstSRS=dst_crs)
+    warp = gdal.Warp(
+        str(reprojected_filename),
+        raster,
+        dstSRS = dst_crs,
+        cutlineDSName = raster_mask_filename,
+        cropToCutline = crop_to_mask_file
+    )
     warp = None
 
-def reproject_rasters(filenames,reprojected_filenames,dst_crs):
+def reproject_rasters(filenames,reprojected_filenames,dst_crs=None):
 
     for filename,reprojected_filename in zip(filenames,reprojected_filenames):
 
-        reproject_raster(str(filename),str(reprojected_filename),dst_crs)
+        reproject_raster(
+            str(filename),
+            str(reprojected_filename),
+            dst_crs = dst_crs
+        )
+
+def _get_mosaic_and_output_raster(
+#def reproject_lidar_tiles_and_build_vrt_by_huc(
+    lidar_index_by_huc,
+    huc,
+    output_raster_filename,
+    parent_temporary_directory,
+):
+
+    huc_prefix = Path(str(huc['HUC'].unique()[0]))
+
+    temporary_directory = Path(str(parent_temporary_directory)).joinpath(
+        huc_prefix
+    )
+
+    if not temporary_directory.is_dir():
+        temporary_directory.mkdir(parents=True, exist_ok=True)
+
+    filenames = lidar_index_by_huc['lidar_file'].to_list()
+    reprojected_filenames = lidar_index_by_huc['lidar_file'].apply(
+        lambda filename: temporary_directory.joinpath(
+            Path(str(filename)).name
+        )
+    ).to_list()
+
+    lidar_index_by_project_grouped = lidar_index_by_huc.groupby('dirname')
+    lidar_index_by_project = [
+        lidar_index_by_project_grouped.get_group(group_name)
+        for group_name
+        in lidar_index_by_project_grouped.groups
+    ]
+    lidar_project_tile_counts = [
+        [ project['dirname'].unique()[0] , project.shape[0] ]
+        for project
+        in lidar_index_by_project
+    ]
+    lidar_projects_with_counts = pd.DataFrame(
+        lidar_project_tile_counts,
+        columns = ['dirname','count']
+    )
+    lidar_projects_with_counts.sort_values(by=['count'])
+    lidar_projects_with_info_tile = lidar_index_by_huc.groupby('dirname').first()[['lidar_file']].reset_index()
+    lidar_projects_with_counts = lidar_projects_with_info_tile.merge(lidar_projects_with_counts,on=['dirname'])
+    lidar_projects_with_counts.sort_values(
+        by = ['count'],
+        ascending = False,
+        inplace = True
+    )
+    print(lidar_projects_with_counts)
+    print(lidar_projects_with_counts['lidar_file'].unique())
+    sys.stdout.flush()
+    try:
+        lidar_projects_with_counts['crs'] = lidar_projects_with_counts['lidar_file'].apply(lambda fn: pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection()))
+    except Exception as e:
+
+        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+        print(e)
+        sys.stdout.flush()
+        return(ExceptionWrapper(e))
+
+    except:
+        print('Unexpected error on HUC: '+str(huc_prefix))
+        print(sys.exc_info()[0])
+        sys.stdout.flush()
+        raise
+
+    else:
+        print('Result for HUC: '+str(huc_prefix))
+        sys.stdout.flush()
+
+    finally:
+        print('Reached finally clause')
+        sys.stdout.flush()
+
+#    filenamess = []
+    vrts_to_composite = []
+    for project in lidar_projects_with_counts['dirname'].to_list():
+#        filenamess.append(lidar_projects_with_counts[
+#            lidar_projects_with_counts['dirname'] == project
+#        ]['lidar_file'].to_list())
+        vrts_to_composite.append(Path(str(temporary_directory)).joinpath(
+            str(huc_prefix) +
+            '-' +
+            str(project) +
+            '.vrt'
+        ))
+
+    filenames_repeated = [filenames] * len(vrts_to_composite)
+    try:
+        for filenames_inner,vrts_to_composite_inner in zip(
+            filenames_repeated,
+            vrts_to_composite
+        ):
+            build_vrt(filenames_inner,vrts_to_composite_inner)
+    except Exception as e:
+
+        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+        print(e)
+        sys.stdout.flush()
+        return(ExceptionWrapper(e))
+
+    except:
+        print('Unexpected error on HUC: '+str(huc_prefix))
+        print(sys.exc_info()[0])
+        sys.stdout.flush()
+        raise
+
+    else:
+        print('Result for HUC: '+str(huc_prefix))
+        sys.stdout.flush()
+
+    finally:
+        print('Reached finally clause')
+        sys.stdout.flush()
+
+
+    reprojected_vrts_filenames = [
+        Path(str(vrt)).parent.joinpath(
+            Path(
+                os.path.splitext(str(Path(str(vrt)).name))[0] +
+                '-reprojected.vrt',
+            )
+        )
+        for vrt
+        in vrts_to_composite
+    ]
+
+    try:
+        for vrt,reprojected_vrt,crs in zip(
+            vrts_to_composite,
+            reprojected_vrts_filenames,
+            lidar_projects_with_counts['crs'].to_list()
+        ):
+            reproject_raster(vrt,reprojected_vrt,dst_crs=crs)
+    except Exception as e:
+
+        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+        print(e)
+        sys.stdout.flush()
+        return(ExceptionWrapper(e))
+
+    except:
+        print('Unexpected error on HUC: '+str(huc_prefix))
+        print(sys.exc_info()[0])
+        sys.stdout.flush()
+        raise
+
+    else:
+        print('Result for HUC: '+str(huc_prefix))
+        sys.stdout.flush()
+
+    finally:
+        print('Reached finally clause')
+        sys.stdout.flush()
+
+
+#   reproject_rasters(filenames,reprojected_filenames,huc.crs)
+
+    temporary_vrt_file = temporary_directory.joinpath(
+        str(huc_prefix) + '.vrt'
+    )
+
+    try:
+        build_vrt(reprojected_vrts_filenames,temporary_vrt_file)
+    except Exception as e:
+
+        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+        print(e)
+        sys.stdout.flush()
+        return(ExceptionWrapper(e))
+
+    except:
+        print('Unexpected error on HUC: '+str(huc_prefix))
+        print(sys.exc_info()[0])
+        sys.stdout.flush()
+        raise
+
+    else:
+        print('Result for HUC: '+str(huc_prefix))
+        sys.stdout.flush()
+
+    finally:
+        print('Reached finally clause')
+        sys.stdout.flush()
+
+
+    temporary_huc_file = temporary_directory.joinpath(
+        str(huc_prefix) + '.geojson'
+    )
+
+    huc.to_file(temporary_huc_file)
+
+    try:
+        reproject_raster(
+            str(temporary_vrt_file),
+            str(output_raster_filename),
+            raster_mask_filename = str(temporary_huc_file)
+        )
+    except Exception as e:
+
+        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+        print(e)
+        sys.stdout.flush()
+        return(ExceptionWrapper(e))
+
+    except:
+        print('Unexpected error on HUC: '+str(huc_prefix))
+        print(sys.exc_info()[0])
+        sys.stdout.flush()
+        raise
+
+    else:
+        print('Result for HUC: '+str(huc_prefix))
+        sys.stdout.flush()
+
+    finally:
+        print('Reached finally clause')
+        sys.stdout.flush()
+
 
 def get_mosaic_dev(lidar_index,vrt_options,directory):
 
@@ -1229,7 +1553,7 @@ def get_mosaic(
         mosaic_tuple = (mosaic,out_meta)
         return(break_hu,mosaic_tuple)
 
-def mask_raster(raster,meta,mask_geometry,memoryfile=False):
+def mask_raster_dev(raster,meta,mask_geometry,memoryfile=False):
 
     if memoryfile:
         function = raster
@@ -1304,7 +1628,7 @@ def output_raster(
 
     return(out_image)
 
-def _get_mosaic_and_output_raster(
+def _get_mosaic_and_output_raster_original(
     lidar_index,
     huc_id,
     dst_crs,
@@ -1381,25 +1705,21 @@ def _get_mosaic_and_output_raster(
             return_dict[huc_id] = out_image
 
 def get_mosaic_and_output_raster(
-    lidar_index,
-    huc_id,
-    dst_crs,
-    subdirectory,
-    return_dict,
-    filename,
+    lidar_index_by_huc,
+    huc,
+    output_raster_filename,
+    parent_temporary_directory,
     skip_existing = True
 ):
 
     skip_function_if_file_exists(
         _get_mosaic_and_output_raster(
-            lidar_index,
-            huc_id,
-            dst_crs,
-            subdirectory,
-            return_dict,
-            filename
+            lidar_index_by_huc,
+            huc,
+            output_raster_filename,
+            parent_temporary_directory
         ),
-        filename,
+        output_raster_filename,
         skip_existing = skip_existing
     )
 
@@ -1430,6 +1750,10 @@ def make_directories_and_error_files(directory,output_prefix,huc_id):
 
     return(subdirectory,path_notime,file_gt1m,file_enclose)
 
+def make_parent_directories(filenames):
+    for filename in filenames:
+        Path(str(filename)).parent.mkdir(parents=True, exist_ok=True)
+
 #@profile
 def output_files(arguments,return_dict):
 #def output(flow_key,flowshu12shape,catchshu12shape,hu12catchs,lidar_index,args,prefix,dst_crs,mem_estimates):
@@ -1459,17 +1783,22 @@ def output_files(arguments,return_dict):
         if not (file_gt1m.is_file() or file_enclose.is_file()):
 
             #output_nhd(flowlines,catchments,huc_ids)
-            filename = os.path.join(subdirectory,'Flowline.shp')
+            filename = os.path.join(subdirectory, 'Flowline.shp')
             write_geodataframe(flowlines,filename)
 
-            filename = os.path.join(subdirectory,'Roughness.csv')
+            filename = os.path.join(subdirectory, 'Roughness.csv')
             write_roughness_table(flowlines,filename)
 
-            filename = os.path.join(subdirectory,'Catchment.shp')
+            filename = os.path.join(subdirectory, 'Catchment.shp')
             write_geodataframe(catchments,filename)
 
             filename = os.path.join(subdirectory, 'Elevation.tif')
-            get_mosaic_and_output_raster(filename)
+            get_mosaic_and_output_raster(
+                lidar_index,
+                hucs,
+                filename,
+                tempdir
+            )
 
         Path(path_notime).unlink()
 
@@ -1729,6 +2058,9 @@ class TaskProcessor(Thread):
             time.sleep(.005)
 
 def get_merged_column(column,dataframes,sort=True):
+    """
+    returns the mutual elements of an identically names column in multiple dataframes
+    """
 
     ## Ensure lists share the same HUCs
 #    mutual_row_values = reduce(
