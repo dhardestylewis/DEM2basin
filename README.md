@@ -1,21 +1,29 @@
 # DEM to basin preprocessing
-This preprocessing script takes source 1-meter digital elevation model (DEM) data and splits, crops, buffers, and reprojects it to individual hydrologic basins (identified by their unique identifier, the "HUC12" ID).
+This preprocessing library takes source 1-meter digital elevation model (DEM) data and splits, crops, buffers, and reprojects it to individual hydrologic basins (identified by their unique identifier, the "HUC12" ID).
 
 This preprocessing script also produces ancillary data products corresponding to each new HUC12 DEM raster to describe their sub-basins (ie "catchments"), their streams  (ie "flowlines"), and the roughness of each streambed.
 
 Taken together, these are the major inputs needed to run [GeoFlood](https://github.com/passaH2O/GeoFlood), which creates short-term flood projections.
 
-## Main Python script
-The recommended way to run `geoflood-preprocessing-1m-mp.py`:
+
+## Alpha-release Python library
+The underlying Python library is available on PyPi and can be installed by:
 ```
-python3 geoflood-preprocessing-1m-mp.py \
+pip install dem2basin
+```
+
+
+## Main Python script
+The recommended way to run `dem2basin.py`:
+```
+python3 dem2basin.py \
     --shapefile study_area_polygon.shp \
     --huc12 WBD-HUC12s.shp \
     --nhd NHD_catchments_and_flowlines.gdb/ \
     --raster TNRIS-LIDAR-Datasets/ \
     --availability TNRIS-LIDAR-Dataset_availability.shp \
     --directory HUC12-DEM_outputs/ \
-    --restart geoflood-preprocessing-study_area.pickle
+    --restart dem2basin-study_area.pickle
 ```
 
 ## Required source data inputs
