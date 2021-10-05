@@ -220,97 +220,136 @@ def argparser():
 
     return(args)
 
-def _drop_index_columns(shape_original):
+def _drop_index_columns(
+    dataframe,
+    inplace = False
+):
     """
     drops columns named 'index', 'index_left', and 'index_right'
-        either to prevent issues with geopandas functions
-        like geopandas.sjoin and to clean up after some geopandas functions
+    either to prevent issues with geopandas functions
+    like geopandas.sjoin and to clean up after some geopandas functions
 
-    :param shape_original: geopandas.GeoDataFrame possibly
+    :param dataframe: pandas.DataFrame possibly
         with 'index', 'index_left', or 'index_right' columns
-    :type shape_original: geopandas.GeoDataFrame
-    :return: geopandas.GeoDataFrame without 'index', 'index_left', 'index_right'
+    :type dataframe: pandas.DataFrame
+    :return: pandas.DataFrame without 'index', 'index_left', 'index_right'
         columns
-    :rtype: geopandas.GeoDataFrame
+    :rtype: pandas.DataFrame
     """
 
-    shape = shape_original.drop(
+    dataframe_without_index_columns = dataframe.drop(
         columns = [
             'index',
             'index_left',
             'index_right'
         ],
-        errors = 'ignore'
+        errors = 'ignore',
+        inplace = inplace
     )
 
-    return(shape)
+    return(dataframe_without_index_columns)
 
-def find_huc_level(shape_original):
+def _drop_index_columns_inplace(
+    dataframes
+):
     """
-    returns a geodataframe with its index set to its HUC column
+    drop index columns inplace for multiple dataframes
 
-    :param shape_original: geopandas.GeoDataFrame with a column
-        named "HUC[0-9]*"
-    :type shape_original: geopandas.GeoDataFrame
+    :param dataframes: sequence of pandas.DataFrames possibly
+        with 'index', 'index_left', or 'index_right' columns
+    :type dataframes: Sequence[pandas.DataFrame]
+    :return: inplace modification of dataframes with 'index', 'index_left', 
+        'index_right' columns removed
+    :rtype: NoneType
+    """
+    ## TODO: untested
+    ## TODO: look into merging with _drop_index_columns by extending
+    ##     functionality
+
+    for dataframe in dataframes:
+        _drop_index_columns(dataframe,inplace=True)
+
+def find_huc_level(
+    hucs
+):
+    """
+    returns the name of the first column attribute found named "HUC[0-9]*"
+
+    :param hucs: vector filename, pathlib.PurePath, or pandas.DataFrame with a
+        column named "HUC[0-9]*"
+    :type hucs: Union[str,pathlib.PurePath,pandas.DataFrame]
     :return: string of name of first column found matching "HUC[0-9]*"
     :rtype: str
     """
+    ## TODO: test pathlib extension
+
+    hucs_input = read_file_or_gdf(hucs)
 
     regexp = re.compile('HUC[0-9]*')
     huc_level = list(filter(
-        regexp.match,shape_original.columns.to_list()
+        regexp.match,hucs_input.columns.to_list()
     ))[0]
 
     return(huc_level)
 
-def set_index_to_huc(shape_original,sort=True):
+def set_index_to_huc(
+    hucs,
+    sort = True
+):
     """
-    find HUC attribute of geopandas.GeoDataFrame and sets the index of this
-        geopandas.GeoDataFrame to that attribute
+    find HUC attribute of shape object and sets the index of this
+    shape object to that attribute
 
-    :param shape_original: geopandas.GeoDataFrame with a column
-        named "HUC[0-9]*"
-    :type shape_original: geopandas.GeoDataFrame
-    :param sort: boolean to sort or not sort the geopandas.GeoDataFrame.
-        Defaults to True.
+    :param hucs: vector filename, pathlib.PurePath, or pandas.DataFrame with a
+        column named "HUC[0-9]*"
+    :type hucs: Union[str,pathlib.PurePath,pandas.DataFrame]
+    :param sort: boolean to sort or not sort the resulting
+        geopandas.GeoDataFrame. Defaults to True.
     :type sort: bool
     :return: geopandas.GeoDataFrame with index set to HUC attribute
     :rtype: geopandas.GeoDataFrame
     """
+    ## TODO: test pathlib extension
 
-    huc_level = find_huc_level(shape_original)
+    huc_level = find_huc_level(hucs)
 
-    shape = shape_original.set_index(huc_level,drop=False)
-    shape.index.name = 'HUC'
-    shape.index = shape.index.astype('int64')
+    hucs = read_file_or_gdf(hucs)
+
+    hucs_with_huc_index = hucs.set_index(huc_level,drop=False)
+    hucs_with_huc_index.index.name = 'HUC'
+    hucs_with_huc_index.index = hucs_with_huc_index.index.astype('int64')
 
     if sort:
-        shape.sort_index(inplace=True)
+        hucs_with_huc_index.sort_index(inplace=True)
 
-    return(shape)
+    return(hucs_with_huc_index)
 
-def read_file_or_gdf(shape_input,**kwargs):
+def read_file_or_gdf(
+    shape,
+    **kwargs
+):
     """
-    enables functions to take either filenames or geodataframes as inputs
+    enables functions to take either a filename, pathlib.PurePath object, or
+    geopandas.GeoDataFrame as input
 
-    :param shape_input: filename or geopandas.GeoDataFrame for more flexible
-        function input
-    :type shape_input: Union[str,geopandas.GeoDataFrame]
+    :param shape: filename, path object, or geopandas.GeoDataFrame for more
+        flexible function input
+    :type shape: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
     :param **kwargs: keyword arguments for geopandas.read_file
-    :return: geopandas.GeoDataFrame for filename
+    :return: geopandas.GeoDataFrame for shape parameter
     :rtype: geopandas.GeoDataFrame
     """
 
-    if isinstance(shape_input,str):
-        shape = gpd.read_file(shape_input,**kwargs)
+    if isinstance(shape,(str,pathlib.PurePath)):
+        shape_input = gpd.read_file(shape,**kwargs)
     else:
-        shape = shape_input.copy()
+        shape_input = shape.copy()
 
-    return(shape)
+    return(shape_input)
 
 def get_hucs_by_shape(
-    shape_input,
-    hucs_input,
+    shape,
+    hucs,
     hucs_layer = None,
     sort = True,
     select_utm = None,
@@ -320,12 +359,13 @@ def get_hucs_by_shape(
     """
     finds HUCs that intersect a study area given as a vector image
 
-    :param shape_input: filename or geopandas.GeoDataFrame input vector image
-        of area of interest
-    :type shape_input: Union[str,geopandas.GeoDataFrame]
-    :param hucs_input: filename or geopandas.GeoDataFrame Watershed Boundary
-        Dataset (WBD) input vector image with a column named "HUC[0-9]*"
-    :type hucs_input: Union[str,geopandas.GeoDataFrame]
+    :param shape: filename, pathlib.PurePath, or geopandas.GeoDataFrame input
+        vector image of area of interest
+    :type shape: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+    :param hucs: filename, pathlib.PurePath, geopandas.GeoDataFrame Watershed
+        Boundary Dataset (WBD) input vector image with a column named
+        "HUC[0-9]*"
+    :type hucs: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
     :param hucs_layer: optional name of HUC layer,
         for example "HUC12", "HUC8", "HUC6", "HUC4", etc. Defaults to None.
     :type hucs_layer: str
@@ -345,37 +385,35 @@ def get_hucs_by_shape(
     ## Find the HUCs that intersect with the input polygon
 
     #shape_input = 'data/TX-Counties/Young/TX-County-Young.shp'
-    shape = read_file_or_gdf(shape_input)
+    shape_gdf = read_file_or_gdf(shape)
 
-    shape['dissolve'] = True
-    shape = shape.dissolve(by='dissolve').reset_index(drop=True)
-    shape = gpd.GeoDataFrame(shape[['geometry']])
+    shape_gdf['dissolve'] = True
+    shape_gdf = shape_gdf.dissolve(by='dissolve').reset_index(drop=True)
+    shape_gdf = gpd.GeoDataFrame(shape_gdf[['geometry']])
 
     #hucs_input = 'data/WBD_National_GDB/WBD_National_GDB.shp/WBDHU12.shp'
-    hucs = read_file_or_gdf(hucs_input,layer=hucs_layer)
+    hucs_gdf = read_file_or_gdf(hucs,layer=hucs_layer)
 
-    crs = find_utm(hucs,select_utm)
+    crs = find_utm(hucs_gdf,select_utm)
     if not to_utm:
-        hucs_original = hucs.copy()
-    to_crs(crs,[hucs,shape])
-    #hucs.to_crs(crs,inplace=True)
-    #shape.to_crs(hucs.crs,inplace=True)
+        hucs_original = hucs_gdf.copy()
+    to_crs(crs,[hucs_gdf,shape])
 
     if drop_index_columns:
-        hucs = _drop_index_columns(hucs)
+        hucs_gdf = _drop_index_columns(hucs_gdf)
 
-    hucs = gpd.overlay(
-        hucs,
+    hucs_gdf = gpd.overlay(
+        hucs_gdf,
         shape,
         how = 'intersection'
     )
 
-    hucs = set_index_to_huc(hucs,sort)
+    hucs_gdf = set_index_to_huc(hucs_gdf,sort)
     if not to_utm:
         hucs_original = set_index_to_huc(hucs_original,sort)
-        hucs = hucs_original.loc[hucs_original.index.isin(hucs.index)]
+        hucs_gdf = hucs_original.loc[hucs_original.index.isin(hucs_gdf.index)]
 
-    return(hucs)
+    return(hucs_gdf)
 
 def set_and_sort_index(
     dataframe,
@@ -426,7 +464,7 @@ def index_dataframe_by_dataframe(dataframe_left,dataframe_right):
 
 def get_nhd_by_shape(
     shape,
-    nhd_input,
+    nhd,
     layer = None,
 #    comid_only = True,
     drop_index_columns = True,
@@ -438,9 +476,9 @@ def get_nhd_by_shape(
 
     :param shape: geopandas.GeoDataFrame of vector image area of interest
     :type shape: geopandas.GeoDataFrame
-    :param nhd_input: filename or geopandas.GeoDataFrame input of
+    :param nhd: filename, pathlib.PurePath, or geopandas.GeoDataFrame input of
         National Hydrography Dataset Medium Resolution (NHD MR) vector image
-    :type nhd_input: Union[str,geopandas.GeoDataFrame]
+    :type nhd: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
     :param layer: name of NHD MR layer, for example 'Catchment' or 'Flowline'.
         Default is None.
     :type layer: str
@@ -461,19 +499,19 @@ def get_nhd_by_shape(
 
     #nhd_file = 'data/NFIEGeo_12.gdb'
     ## Find the flowlines whose representative points are within these HUCs
-    geodataframe = read_file_or_gdf(nhd_input,layer=layer,mask=shape)
+    nhd_layer = read_file_or_gdf(nhd,layer=layer,mask=shape)
 
     if drop_index_columns:
-        geodataframe = _drop_index_columns(geodataframe)
+        nhd_layer = _drop_index_columns(nhd_layer)
 
     if comid_column is not None:
-        geodataframe.rename(columns={comid_column:'COMID'},inplace=True)
-    geodataframe = set_and_sort_index(geodataframe,'COMID')
+        nhd_layer.rename(columns={comid_column:'COMID'},inplace=True)
+    nhd_layer = set_and_sort_index(nhd_layer,'COMID')
 
     if fix_invalid_geometries:
-        geodataframe.geometry = geodataframe.buffer(0)
+        nhd_layer.geometry = nhd_layer.buffer(0)
 
-    return(geodataframe)
+    return(nhd_layer)
 
 def get_representative_points(
     flowlines,
@@ -552,48 +590,70 @@ def set_roughness_by_streamorder(
 
     flowlines = flowlines_original.copy()
 
-    flowlines.loc[flowlines[streamorder_col]==0,roughness_col] = .99
-    flowlines.loc[flowlines[streamorder_col]==1,roughness_col] = .2
-    flowlines.loc[flowlines[streamorder_col]==2,roughness_col] = .1
-    flowlines.loc[flowlines[streamorder_col]==3,roughness_col] = .065
-    flowlines.loc[flowlines[streamorder_col]==4,roughness_col] = .045
-    flowlines.loc[flowlines[streamorder_col]==5,roughness_col] = .03
-    flowlines.loc[flowlines[streamorder_col]==6,roughness_col] = .01
-    flowlines.loc[flowlines[streamorder_col]==7,roughness_col] = .025
+    flowlines.loc[ flowlines[streamorder_col] == 0 , roughness_col ] = .99
+    flowlines.loc[ flowlines[streamorder_col] == 1 , roughness_col ] = .2
+    flowlines.loc[ flowlines[streamorder_col] == 2 , roughness_col ] = .1
+    flowlines.loc[ flowlines[streamorder_col] == 3 , roughness_col ] = .065
+    flowlines.loc[ flowlines[streamorder_col] == 4 , roughness_col ] = .045
+    flowlines.loc[ flowlines[streamorder_col] == 5 , roughness_col ] = .03
+    flowlines.loc[ flowlines[streamorder_col] == 6 , roughness_col ] = .01
+    flowlines.loc[ flowlines[streamorder_col] == 7 , roughness_col ] = .025
 
     return(flowlines)
 
-def clip_geodataframe_by_attribute(
-    geodataframe,
-    geodataframe_with_attribute,
+def clip_dataframe_by_attribute(
+    dataframe,
+    dataframe_with_attribute,
     attribute = None
 ):
     """
     assign attribute from one geodataframe to another
-        by their mutual index values
+    by their mutual index values
+
+    :param dataframe: pandas.DataFrame to merge single attribute column
+        from other pandas.DataFrame that has this attribute
+    :type dataframe: pandas.DataFrame
+    :param dataframe_with_attribute: other pandas.DataFrame that has this
+        attribute
+    :type dataframe_with_attribute: pandas.DataFrame
+    :param attribute: attribute column name
+    :type attribute: str
+    :return: new pandas.DataFrame with attribute merged
+    :rtype: pandas.DataFrame
     """
 
     ## Find the flowlines corresponding with these catchments
     ##  (Note: this line is optional.
     ##  Commenting it out will result in non-COMID-identified flowlines)
     #if comid_only==True:
-    geodataframe = index_dataframe_by_dataframe(
-        geodataframe,
-        geodataframe_with_attribute
+    dataframe = index_dataframe_by_dataframe(
+        dataframe,
+        dataframe_with_attribute
     )
 
     ## Determine which HUCs each of the flowlines and catchments belong to
-    geodataframe[attribute] = geodataframe_with_attribute.loc[
-        geodataframe.index,
+    dataframe[attribute] = dataframe_with_attribute.loc[
+        dataframe.index,
         attribute
     ]
 
-    return(geodataframe)
+    return(dataframe)
 
 def find_common_utm(shape_original):
     """
     determines the mode of the UTMs of the representative points of a
-        geodataframe’s geometries
+    geodataframe’s geometries
+
+    :param dataframe: pandas.DataFrame to merge single attribute column
+        from other pandas.DataFrame that has this attribute
+    :type dataframe: pandas.DataFrame
+    :param dataframe_with_attribute: other pandas.DataFrame that has this
+        attribute
+    :type dataframe_with_attribute: pandas.DataFrame
+    :param attribute: attribute column name
+    :type attribute: str
+    :return: new pandas.DataFrame with attribute merged
+    :rtype: pandas.DataFrame
     """
     ## Determine whether the administrative division is within a single UTM
 
@@ -626,25 +686,30 @@ def find_utm(gdf_original,select_utm=None):
         utm_output = find_common_utm(gdf)
 
     ## Buffer the HUC catchments
-    if gdf.crs.datum.name=='World Geodetic System 1984':
+    if gdf.crs.datum.name == 'World Geodetic System 1984':
         #crs = CRS(proj='utm', zone=utm_output[0], datum='WGS84')
-        if utm_output==13:
+        if utm_output == 13:
             crs = 'epsg:32613'
-        elif utm_output==14:
+        elif utm_output == 14:
             crs = 'epsg:32614'
-        elif utm_output==15:
+        elif utm_output == 15:
             crs = 'epsg:32615'
         else:
             print("ERROR: UTMs outside of 13-15 not yet supported.")
             if hasattr(main,'__file__'):
                 sys.exit(0)
-    elif gdf.crs.datum.name=='North American Datum 1983' or gdf.crs.datum.name=='D_NORTH_AMERICAN_1983' or gdf.crs.datum.name=='NAD83 (National Spatial Reference System 2011)' or gdf.crs.datum.name=='NAD83':
+    elif (
+        gdf.crs.datum.name == 'North American Datum 1983' or
+        gdf.crs.datum.name == 'D_NORTH_AMERICAN_1983' or
+        gdf.crs.datum.name == 'NAD83 (National Spatial Reference System 2011)' or
+        gdf.crs.datum.name == 'NAD83'
+    ):
         #crs = CRS(proj='utm', zone=utm_output[0], datum='NAD83')
-        if utm_output==13:
+        if utm_output == 13:
             crs = 'epsg:6342'
-        elif utm_output==14:
+        elif utm_output == 14:
             crs = 'epsg:6343'
-        elif utm_output==15:
+        elif utm_output == 15:
             crs = 'epsg:6344'
         else:
             print("ERROR: UTMs outside of 13-15 not yet supported.")
@@ -722,113 +787,198 @@ def get_data_polygons_for_each_raster(raster_filelist):
 
     return(polygonized_rasters)
 
-class FathomIndex():
+def find_raster_filenames(
+    parent_directory,
+    get_filesizes = False,
+    get_crs = False,
+    get_epsg = False
+#    get_geographic_crs = False
+):
+
+    filetypes = ('*.img', '*.dem', '*.tif')
+
+    fathom_filenames = []
+    for filetype in filetypes:
+        fathom_filenames.extend(list(
+            Path(str(parent_directory)).rglob(os.path.join(
+                'dem',
+                filetype
+            ))
+        ))
+
+    fathom_filenames_lowercased = []
+    fathom_filesizes = []
+    fathom_file_crs = []
+    fathom_file_epsg = []
+#    fathom_file_geographic_crs = []
+    for fathom_filename in fathom_filenames:
+        fathom_filenames_lowercased.append(
+            os.path.splitext(os.path.join(*fathom_filename.parts).lower())[0]
+        )
+        if get_filesizes:
+            fathom_filesizes.append(Path(fathom_filename).stat().st_size)
+        if get_crs:
+            fathom_file_crs.append(
+                pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection())
+            )
+        if get_epsg:
+            fathom_file_epsg = fathom_file_crs[-1].to_epsg()
+        if get_geographic_crs:
+## TODO: find correct function to get geographic CRS here
+#            fathom_file_geographic_crs = fathom_file_crs[-1].
+
+    fathom_filenames = pd.DataFrame(
+        data = {
+            'filename' : fathom_filenames,
+            'filename_lowercased' : fathom_filenames_lowercased,
+            'filesize' : fathom_filesizes,
+            'crs' : fathom_file_crs,
+            'epsg' : fathom_file_epsg
+#            'geographic_crs' : fathom_file_geographic_crs
+        }
+    )
+
+    return(fathom_filenames)
+
+def index_fathom_files(
+#    self,
+    fathom_parent_directory,
+    hucs = None,
+    availability_file = None,
+    new_availability_file = None,
+    drop_index_columns = True,
+    get_filesizes = False,
+    get_crs = False,
+    get_epsg = False
+#    get_geographic_crs = False
+):
     """
     Georeference Fathom 3m raster dataset, with option to associate by HUC
+    assign Manning’s n roughness value by each flowline’s stream order
+    
+    :param fathom_parent_directory: str or pathlib.PurePath of Fathom3m parent
+        directory, expected to contain a directory named 'dem' under which the
+        filenames are found
+    :type fathom_parent_directory: Union[str,pathlib.PurePath]
+    :param hucs: filename, pathlib.PurePath, or geopandas.GeoDataFrame of 
+        HUCs. If provided, modifies output geopandas.GeoDataFrame to intersect
+        availability file with HUCs, usually resulting in repeated filename rows
+        for adjacent HUCs. Defaults to None.
+    :type hucs: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+    :param availability_file: input filename of existing Fathom3m availability
+        file. Defaults to None.
+    :type availability_file: str
+    :param new_availability_file: output filename of availability with found.
+        Defaults to None.
+    :type new_availability_file: str
+    :param drop_index_columns: boolean whether to drop columns names 'index',
+        'index_left', or 'index_right' from output. Defaults to True.
+    :type drop_index_columns: bool
+    :param get_filesizes: get the filesizes of each 
+    :type get_filesizes: bool
+    :return: geopandas.GeoDataFrame with filenames found in the Fathom3m parent
+        directory
+    :rtype: geopandas.GeoDataFrame
     """
-
-    def __init__(
-        self,
-        hucs = None,
-        fathom_availability_file = None,
-        fathom_parent_directory = None
-    ):
-
-        if hucs is None:
-            self.hucs = gpd.GeoDataFrame()
-        else:
-            self.hucs = hucs.copy()
-
-        if fathom_availability_file is None:
-            self.fathom_availability_file = ''
-        else:
-            self.fathom_availability_file = fathom_availability_file
-
-        if fathom_parent_directory is None:
-            self.fathom_parent_directory = ''
-        else:
-            self.fathom_parent_directory = fathom_parent_directory
-
-    def index_fathom_files(
-        self,
-        fathom_parent_directory,
-        hucs = None,
-        availability_file = None,
-        new_availability_file = None,
-        drop_index_columns = True
-    ):
     ## TODO: divide into:
     ##   - correcting the LIDAR availability file, and
     ##   - applying HUCs column attribute
-    
-        if availability_file is not None:
-            availability = gpd.read_file(availability_file,mask=hucs)
-        else:
-            get_data_polygons_by_tile()
 
-        try:
-            availability = availability[
-                availability['demname'] != 'No Data Exist'
-            ]
-        except:
-            pass
+    hucs_gdf = read_file_or_gdf(hucs)
 
-        if drop_index_columns:
-            availability = _drop_index_columns(availability)
+    if availability_file is not None:
+        availability = gpd.read_file(availability_file,mask=hucs_gdf)
+    else:
+        availability = get_data_polygons_for_each_raster()
 
-        if hucs is not None:
-            availability = gpd.sjoin(
-                availability,
-                hucs[['HUC','geometry']].to_crs(availability.crs),
-                how = 'inner',
-                op = 'intersects'
-            )
-
-        #availability.rename(columns={'index_right':'index_shape'},inplace=True)
-        filetypes = ('*.img', '*.dem', '*.tif')
-        lidardatafiles = []
-        for filetype in filetypes:
-            lidardatafiles.extend(list(
-                Path(lidar_parent_directory).rglob(os.path.join(
-                    '*',
-                    'dem',
-                    filetype
-                ))
-            ))
-        lidardatafileslower = [
-            os.path.splitext(os.path.join(*fn.parts).lower())[0]
-            for fn
-            in lidardatafiles
+    try:
+        availability = availability[
+            availability['demname'] != 'No Data Exist'
         ]
-        lidardatafiles = pd.DataFrame(
-            data = {
-                'lidar_file': lidardatafiles,
-                'pathlower': lidardatafileslower
-            }
-        )
-        availability['path'] = availability[['dirname','demname']].apply(
-            lambda row: os.path.join(
-                os.path.join(*Path(lidar_parent_directory).parts),
-                row[0],
-                'dem',
-                row[1]
-            ),
-            axis=1
-        )
-        availability['pathlower'] = availability['path'].apply(
-            lambda path: path.lower()
-        )
-        availability = availability.merge(lidardatafiles,on='pathlower')
-        availability.drop(
-#            columns = ['demname','dirname','path','pathlower'],
-            columns = ['path','pathlower'],
-            inplace = True
-        )
-        availability['lidar_file'] = availability['lidar_file'].apply(
-            lambda fn: str(fn)
+    except:
+        pass
+
+    if drop_index_columns:
+        availability = _drop_index_columns(availability)
+
+    if hucs_gdf is not None:
+        availability = gpd.sjoin(
+            availability,
+            hucs_gdf[['HUC','geometry']].to_crs(availability.crs),
+            how = 'inner',
+            op = 'intersects'
         )
 
-        return(availability)
+    find_raster_filenames(
+        fathom_parent_directory,
+        get_filesizes = False,
+        get_crs = False,
+        get_epsg = False
+        #get_geographic_crs = False
+    )
+
+#    filetypes = ('*.img', '*.dem', '*.tif')
+#    fathom_filenames = []
+#    for filetype in filetypes:
+#        fathom_filenames.extend(list(
+#            Path(str(fathom_parent_directory)).rglob(os.path.join(
+#                'dem',
+#                filetype
+#            ))
+#        ))
+#    fathom_filenames_lowercased = []
+#    fathom_filesizes = []
+#    for fathom_filename in fathom_filenames:
+#        fathom_filenames_lowercased.append(
+#            os.path.splitext(os.path.join(*fathom_filename.parts).lower())[0]
+#        )
+#        fathom_filesizes = Path(fathom_filename).stat().st_size
+#
+#    fathom_filenames = pd.DataFrame(
+#        data = {
+#            'filename' : fathom_filenames,
+#            'filename_lowercased' : fathom_filenames_lowercased
+#            'filesize' : fathom_filesizes
+#        }
+#    )
+
+    availability['possible_filename'] = availability[['demname']].apply(
+#        lambda row: os.path.join(
+#            os.path.join(*Path(str(fathom_parent_directory)).parts),
+#            'fathom3m',
+#            'dem',
+#            row[1]
+#        ),
+        lambda row: Path(str(fathom_parent_directory)).joinpath(*Path(
+            'fathom3m',
+            'dem',
+            str(row[1])
+        ).parts),
+        axis = 1
+    )
+    availability['possible_filename_lowercased'] = availability[
+        'possible_filename'
+    ].apply(
+        lambda filename: filename.lower()
+    )
+
+    availability = availability.merge(
+        fathom_filenames,
+        on = 'possible_filename_lowercased'
+    )
+    availability.drop(
+        columns = ['possible_filename','possible_filename_lowercased'],
+        inplace = True
+    )
+
+    availability['filename'] = availability['filename'].apply(
+        lambda filename: str(filename)
+    )
+
+    if new_availability_file is not None:
+        availability.to_file(new_availability_file)
+
+    return(availability)
     
 class LidarIndex():
     """
@@ -862,6 +1012,7 @@ class LidarIndex():
         hucs,
         lidar_availability_file,
         lidar_parent_directory,
+        new_availability_file = None,
         drop_index_columns = True
     ):
     ## TODO: divide into:
@@ -926,6 +1077,9 @@ class LidarIndex():
         availability['lidar_file'] = availability['lidar_file'].apply(
             lambda fn: str(fn)
         )
+
+        if new_availability_file is not None:
+            availability.to_file(new_availability_file)
 
         return(availability)
     
@@ -1055,8 +1209,8 @@ def get_flowlines_and_representative_points_by_huc(hucs,nhd_input):
 
     Assumes National Hydrography Dataset (NHD) vector image inputs for flowlines
     HUCs are assumed to be derived from the Watershed Boundary Dataset (WBD),
-        and must have a column labelled ``HUC*``,
-        for example ``HUC12`` or ``HUC8``
+    and must have a column labelled ``HUC*``,
+    for example ``HUC12`` or ``HUC8``
 
     :param hucs: HUCs geodataframe,
         with column labelled ``HUC*``, such as ``HUC12`` or ``HUC8``
@@ -1080,7 +1234,7 @@ def get_flowlines_and_representative_points_by_huc(hucs,nhd_input):
         hucs
     )
 
-    flowlines = clip_geodataframe_by_attribute(
+    flowlines = clip_dataframe_by_attribute(
         flowlines,
         flowline_representative_points,
         attribute = 'HUC'
@@ -1103,7 +1257,7 @@ def get_catchments_by_huc(hucs,nhd_input,flowline_representative_points):
         fix_invalid_geometries = True
     )
 
-    catchments = clip_geodataframe_by_attribute(
+    catchments = clip_dataframe_by_attribute(
         catchments,
         flowline_representative_points,
         attribute = 'HUC'
@@ -1141,7 +1295,7 @@ def extend_lidar_index(lidar_index,raster,vrt_filename):
     #else:
 
     index = lidar_index[
-        lidar_index['lidar_file']==raster.name
+        lidar_index['lidar_file'] == raster.name
     ].index[0]
 
     lidar_index.loc[index,'minimum_resolution'] = min(raster.res)
@@ -1259,7 +1413,7 @@ def build_vrts(lidar_index,vrt_filename_template,lowest_resolution=False):
         )
 
         lidar_index.loc[
-            lidar_index['lidar_file']==filename,
+            lidar_index['lidar_file'] == filename,
             'vrt_filename'
         ] = vrt_filename
 
@@ -1305,6 +1459,7 @@ def reproject_rasters(filenames,reprojected_filenames,dst_crs=None):
 
 def try_except_for_huc(function,huc_id):
 
+    ## TODO: test and implement this function
     try:
 
         result = function
@@ -1356,7 +1511,10 @@ def count_lidar_projects_in_lidar_index(lidar_index_by_huc):
     )
     lidar_projects_with_counts.sort_values(by=['count'])
     lidar_projects_with_info_tile = lidar_index_by_huc.groupby('dirname').first()[['lidar_file']].reset_index()
-    lidar_projects_with_counts = lidar_projects_with_info_tile.merge(lidar_projects_with_counts,on=['dirname'])
+    lidar_projects_with_counts = lidar_projects_with_info_tile.merge(
+        lidar_projects_with_counts,
+        on = ['dirname']
+    )
     lidar_projects_with_counts.sort_values(
         by = ['count'],
         ascending = False,
@@ -1365,7 +1523,11 @@ def count_lidar_projects_in_lidar_index(lidar_index_by_huc):
 
     huc_prefix = Path(str(lidar_index_by_huc['HUC'].unique()[0]))
     try:
-        lidar_projects_with_counts['crs'] = lidar_projects_with_counts['lidar_file'].apply(lambda fn: pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection()))
+        lidar_projects_with_counts['crs'] = lidar_projects_with_counts[
+            'lidar_file'
+        ].apply(
+            lambda fn: pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection())
+        )
     except Exception as e:
 
         print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
@@ -1906,36 +2068,71 @@ def get_mosaic_and_output_raster(
         skip_existing = skip_existing
     )
 
-def make_directories_and_error_files(directory,output_prefix,huc_id):
+def make_directories_and_error_files(
+    output_parent_directory,
+    output_filename_prefix,
+    huc_id
+):
 
-    subdirectory = os.path.join(
+    output_directory = os.path.join(
         directory,
-        str(output_prefix) + '-' + str(huc_id)
+        str(output_filename_prefix) + '-' + str(huc_id)
     )
-    print(subdirectory)
-    sys.stdout.flush()
-    Path(subdirectory).mkdir(parents=True, exist_ok=True)
+#    print(output_directory)
+#    sys.stdout.flush()
+    Path(output_directory).mkdir(parents=True, exist_ok=True)
 
-    path_notime = os.path.join(
-        subdirectory,
+    notimeleft_filename = os.path.join(
+        output_directory,
         "jobNoTimeLeftWhileProcessing.err"
     )
-    Path(path_notime).touch()
+    Path(notimeleft_filename).touch()
 
-    path_gt1m = os.path.join(subdirectory, "allGT1m.err")
-    file_gt1m = Path(path_gt1m)
+    greaterthan1m_filename = os.path.join(output_directory, "allGT1m.err")
+    greaterthan1m_path = Path(greaterthan1m_filename)
 
-    path_enclose = os.path.join(
-        subdirectory,
+    rasternotenclosed_filename = os.path.join(
+        output_directory,
         "rasterDataDoesNotEnclose.err"
     )
-    file_enclose = Path(path_enclose)
+    rasternotenclosed_path = Path(rasternotenclosed_filename)
 
-    return(subdirectory,path_notime,file_gt1m,file_enclose)
+    return(
+        output_directory,
+        notimeleft_filename,
+        greaterthan1m_path,
+        rasternotenclosed_path
+    )
 
 def make_parent_directories(filenames):
     for filename in filenames:
         Path(str(filename)).parent.mkdir(parents=True, exist_ok=True)
+
+def output_geoflood_gis_inputs(
+    output_directory,
+    flowlines,
+    catchments,
+    lidar_index,
+    hucs,
+    temporary_directory
+):
+
+    filename = os.path.join(output_directory, 'Flowline.shp')
+    write_geodataframe(flowlines,filename)
+
+    filename = os.path.join(output_directory, 'Roughness.csv')
+    write_roughness_table(flowlines,filename)
+
+    filename = os.path.join(output_directory, 'Catchment.shp')
+    write_geodataframe(catchments,filename)
+
+    filename = os.path.join(output_directory, 'Elevation.tif')
+    get_mosaic_and_output_raster(
+        lidar_index,
+        hucs,
+        filename,
+        temporary_directory
+    )
 
 #@profile
 def output_files(arguments,return_dict):
@@ -1949,7 +2146,7 @@ def output_files(arguments,return_dict):
         hucs,
         lidar_index,
         args,
-        output_prefix,
+        output_filename_prefix,
         dst_crs,
         tempdir
     ) = arguments
@@ -1957,15 +2154,23 @@ def output_files(arguments,return_dict):
     try:
 
         (
-            subdirectory,
+            output_directory,
             path_notime,
             file_gt1m,
             file_enclose
-        ) = make_directories_and_error_files(directory,output_prefix)
+        ) = make_directories_and_error_files(directory,output_filename_prefix)
 
         if not (file_gt1m.is_file() or file_enclose.is_file()):
 
-            #output_nhd(flowlines,catchments,huc_ids)
+            output_geoflood_gis_inputs(
+                output_directory,
+                flowlines,
+                catchments,
+                lidar_index,
+                hucs,
+                temporary_directory
+            )
+
             filename = os.path.join(subdirectory, 'Flowline.shp')
             write_geodataframe(flowlines,filename)
 
@@ -2377,6 +2582,130 @@ def unpickle_multiple_objects(pickle_file):
 
     return(objects)
 
+def prepare_geoflood_gis_inputs(
+    shape_input,
+    hucs_input,
+    nhd_input,
+    lidar_availability_input,
+    lidar_parent_directory
+):
+    ## TODO: redundant method: merge with above `get_lidar_intermediate_vectors`
+
+    hucs = get_hucs_by_shape(shape_input,hucs_input)
+
+    (
+        flowlines,
+        flowline_representative_points
+    ) = get_flowlines_and_representative_points_by_huc(hucs,nhd_input)
+
+    catchments = get_catchments_by_huc(
+        hucs,
+        nhd_input,
+        flowline_representative_points
+    )
+
+    flowlines = index_dataframe_by_dataframe(
+        flowlines,
+        catchments
+    )
+
+    hucs = get_hucs_from_catchments(catchments)
+
+    #lidar_index = index_lidar_files_dev(hucs)
+    lidar_index_obj = LidarIndex()
+    lidar_index = lidar_index_obj.index_lidar_files(
+        hucs,
+        lidar_availability_input,
+        lidar_parent_directory
+    )
+
+    to_crs(hucs.crs,[flowlines,catchments,lidar_index])
+
+    return(hucs,flowlines,catchments,lidar_index)
+
+def list_geodataframes_grouped_by_column(
+    geodataframes,
+    column_elements_subset,
+    column = 'HUC'
+):
+
+    lists_of_geodataframes = []
+
+    for geodataframe in geodataframes:
+
+        lists_of_geodataframes.append(list(dict(tuple(
+            geodataframe[
+                geodataframe[column].isin(column_elements_subset)
+            ].sort_values(column).groupby(column)
+        )).values()))
+
+    return(list_of_geodataframes)
+
+def sort_lists_of_geodataframes_by_index(geodataframes,index):
+
+    sorted_geodataframes = []
+
+    for geodataframe in geodataframes:
+        sorted_geodataframe.append([geodataframe[i] for i in index])
+
+    return(sorted_geodataframes)
+
+def sort_and_crop_lists_of_geodataframes_by_filesize(
+    geodataframes,
+    geoseries_of_filenames
+):
+    ## TODO: this whole function is ill-conceived:
+    ##     filesize estimates should be folded into
+    ##         LidarIndex() and FathomIndex() classes above, not done here
+    ##     this sorting can and should happen before dividing geodataframes into
+    ##         lists by HUC, not after
+
+    ## TODO: replace `lidar_index[i]['lidar_file']`
+    ##     with `geoseries_of_filenames`
+    mem_estimates = {}
+    for i in range(len(lidar_index)):
+        mem_estimates[i] = lidar_index[i]['lidar_file'].apply(
+            lambda x: Path(x).stat().st_size
+        ).sum()
+
+    mem_estimates = {
+        k : v
+        for k, v
+        in sorted(mem_estimates.items(), key=lambda item: item[1])
+    }
+    gc.collect()
+    mem_estimates = {
+        k : v
+        for k, v
+        in mem_estimates.items()
+        if v < psutil.virtual_memory().total
+    }
+
+    (
+        huc_ids,
+        hucs,
+        flowlines,
+        catchments,
+        lidar_index
+    ) = sort_geodataframes_by_index(
+        [
+            huc_ids,
+            hucs,
+            flowlines,
+            catchments,
+            lidar_index
+        ],
+        mem_estimates.keys()
+    )
+    ## TODO: test function replacement and then delete comments below
+#    huc_ids = [huc_ids[i] for i in mem_estimates.keys()]
+#    flowlines = [flowlines[i] for i in mem_estimates.keys()]
+#    catchments = [catchments[i] for i in mem_estimates.keys()]
+#    hucs = [hucs[i] for i in mem_estimates.keys()]
+#    lidar_index = [lidar_index[i] for i in mem_estimates.keys()]
+
+    return()
+
 def main():
 
     MAX_B = psutil.virtual_memory().total - psutil.virtual_memory().used
@@ -2399,9 +2728,9 @@ def main():
             with open(args.restart, 'rb') as input:
                 (
                     huc_ids,
-                    flowshu12shape,
-                    catchshu12shape,
-                    hu12catchs,
+                    flowlines,
+                    catchments,
+                    hucs,
                     lidar_index
                 ) = pickle.load(input)
         else:
@@ -2409,41 +2738,25 @@ def main():
 
     if not args.restart or no_restart_file:
 
-        hucs = get_hucs_by_shape(args.shapefile,args.hucs)
-
         (
-            flowlines,
-            flowline_representative_points
-        ) = get_flowlines_and_representative_points_by_huc(hucs,args.nhd)
-
-        catchments = get_catchments_by_huc(
             hucs,
+            flowlines,
+            catchments,
+            lidar_index
+        ) = prepare_geoflood_gis_inputs(
+            args.shapefile,
+            args.hucs,
             args.nhd,
-            flowline_representative_points
-        )
-
-        flowlines = index_dataframe_by_dataframe(
-            flowlines,
-            catchments
-        )
-
-        hucs = get_hucs_from_catchments(catchments)
-
-        #lidar_index = index_lidar_files_dev(hucs)
-        lidar_index_obj = LidarIndex()
-        lidar_index = lidar_index_obj.index_lidar_files(
-            hucs,
             args.lidar_availability,
             args.lidar_parent_directory
         )
-
-        to_crs(hucs.crs,[flowlines,catchments,lidar_index])
-
+        
         huc_ids = get_merged_column(
             'HUC',
             [lidar_index,flowlines,catchments,hucs]
         )
         ## Ensure lists share the same HUCs
+        ## TODO: test function replacement and delete these comments
 #        huc_ids = np.sort(list(
 #            set(lidar_index['HUC']).intersection(flowlines['HUC'])
 #        ))
@@ -2454,34 +2767,43 @@ def main():
 #            set(huc_ids).intersection(hucs['HUC'])
 #        ))
     
+#        hucs.drop(
+#            columns = ['index_left','index_right'],
+#            errors = 'ignore',
+#            inplace = True
+#        )
+        _drop_index_columns_inplace([hucs,flowlines,catchments,lidar_index])
+
         ## Divide into lists per HUC
-        flowlines = list(dict(tuple(
-            flowlines[
-                flowlines['HUC'].isin(huc_ids)
-            ].sort_values('HUC').groupby('HUC')
-        )).values())
-        catchments = list(dict(tuple(
-            catchments[
-                catchments['HUC'].isin(huc_ids)
-            ].sort_values('HUC').groupby('HUC')
-        )).values())
-        hucs.drop(
-            columns = ['index_left','index_right'],
-            errors = 'ignore',
-            inplace = True
+        list_geodataframes_grouped_by_column(
+            [hucs,flowlines,catchments,lidar_index],
+            huc_ids,
+            column = 'HUC'
         )
-        hucs = list(dict(tuple(
-            hucs[
-                hucs['HUC'].isin(huc_ids)
-            ].sort_index().groupby('HUC')
-        )).values())
-        lidar_index = list(dict(tuple(
-            lidar_index[
-                lidar_index['HUC'].isin(huc_ids)
-            ].sort_values('HUC').groupby('HUC')
-        )).values())
+        ## TODO: test function replacement and delete these comments
+#        flowlines = list(dict(tuple(
+#            flowlines[
+#                flowlines['HUC'].isin(huc_ids)
+#            ].sort_values('HUC').groupby('HUC')
+#        )).values())
+#        catchments = list(dict(tuple(
+#            catchments[
+#                catchments['HUC'].isin(huc_ids)
+#            ].sort_values('HUC').groupby('HUC')
+#        )).values())
+#        hucs = list(dict(tuple(
+#            hucs[
+#                hucs['HUC'].isin(huc_ids)
+#            ].sort_index().groupby('HUC')
+#        )).values())
+#        lidar_index = list(dict(tuple(
+#            lidar_index[
+#                lidar_index['HUC'].isin(huc_ids)
+#            ].sort_values('HUC').groupby('HUC')
+#        )).values())
     
         ## Sort lists by estimated memory usage
+        ## TODO: test function replacement and delete these comments
         mem_estimates = {}
         for i in range(len(lidar_index)):
             mem_estimates[i] = lidar_index[i]['lidar_file'].apply(
