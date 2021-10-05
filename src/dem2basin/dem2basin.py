@@ -854,7 +854,6 @@ def index_fathom_files(
 ):
     """
     Georeference Fathom 3m raster dataset, with option to associate by HUC
-    assign Manning’s n roughness value by each flowline’s stream order
     
     :param fathom_parent_directory: str or pathlib.PurePath of Fathom3m parent
         directory, expected to contain a directory named 'dem' under which the
@@ -1009,32 +1008,55 @@ class LidarIndex():
 
     def index_lidar_files(
         self,
-        hucs,
-        lidar_availability_file,
         lidar_parent_directory,
+        hucs,
+        availability_file,
         new_availability_file = None,
         drop_index_columns = True
     ):
-    ## TODO: divide into:
-    ##   - correcting the LIDAR availability file, and
-    ##   - applying HUCs column attribute
+        """
+        Georeference TX Lidar 1m raster dataset, with option to associate by HUC
+        
+        :param lidar_parent_directory: str or pathlib.PurePath of TX Lidar
+            parent directory, expected to contain a directory named 'dem' under
+            which the filenames are found
+        :type lidar_parent_directory: Union[str,pathlib.PurePath]
+        :param hucs: filename, pathlib.PurePath, or geopandas.GeoDataFrame of 
+            HUCs. If provided, modifies output geopandas.GeoDataFrame to
+            intersect availability file with HUCs, usually resulting in repeated
+            filename rows for adjacent HUCs.
+        :type hucs: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+        :param availability_file: input filename of existing Lidar
+            availability file.
+        :type availability_file: str
+        :param new_availability_file: output filename of availability with
+            found. Defaults to None.
+        :type new_availability_file: str
+        :param drop_index_columns: boolean whether to drop columns names
+            'index', 'index_left', or 'index_right' from output. Defaults to
+            True.
+        :type drop_index_columns: bool
+        :return: geopandas.GeoDataFrame with filenames found in the Lidar parent
+            directory
+        :rtype: geopandas.GeoDataFrame
+        """
+        ## TODO: divide into:
+        ##   - correcting the LIDAR availability file, and
+        ##   - applying HUCs column attribute
     
         availability = gpd.read_file(lidar_availability_file,mask=hucs)
         availability = availability[availability['demname']!='No Data Exist']
-#        availability.drop(
-#            columns = ['tilename','las_size_m','laz_size_m'],
-#            inplace = True
-#        )
 
         if drop_index_columns:
             availability = _drop_index_columns(availability)
+
         availability = gpd.sjoin(
             availability,
             hucs[['HUC','geometry']].to_crs(availability.crs),
             how = 'inner',
             op = 'intersects'
         )
-        #availability.rename(columns={'index_right':'index_shape'},inplace=True)
+
         filetypes = ('*.img', '*.dem', '*.tif')
         lidardatafiles = []
         for filetype in filetypes:
@@ -1056,6 +1078,7 @@ class LidarIndex():
                 'pathlower': lidardatafileslower
             }
         )
+
         availability['path'] = availability[['dirname','demname']].apply(
             lambda row: os.path.join(
                 os.path.join(*Path(lidar_parent_directory).parts),
@@ -1070,7 +1093,6 @@ class LidarIndex():
         )
         availability = availability.merge(lidardatafiles,on='pathlower')
         availability.drop(
-#            columns = ['demname','dirname','path','pathlower'],
             columns = ['path','pathlower'],
             inplace = True
         )
