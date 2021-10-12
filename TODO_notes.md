@@ -22,7 +22,7 @@ So there are two parallel tracks forward right now:
         - enable LidarIndex to be updated on subsequent runs, rather than having to rerun it each time to rebuild the database of file names and file metadata, hopefully by:
             - converting LidarIndex to a proper class method, rather than a function method in a class wrapper
             - marking individual Lidar projects as "complete" when we are confident each filename within one has been successfully identified and its metadata recorded
-            - store the Lidar metadata in a PostgreSQL database, and write up the Python methods to retrieve the data from this database / generalize the use of the 'lidar_index' GeoDataFrame throughout to support either PostgreSQL or GeoDataFrame inputs
+            - store the Lidar metadata in a PostgreSQL database (to be stored under PT2050 DataX PATH location or PATH VM from Je'aime), and write up the Python methods to retrieve the data from this database / generalize the use of the 'lidar_index' GeoDataFrame throughout to support either PostgreSQL or GeoDataFrame inputs
         - when locating files in the Lidar dataset, record the following extra information:
             - file size
             - CRS (ie WKT projection)
