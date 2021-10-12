@@ -823,8 +823,8 @@ def find_raster_filenames(
             )
         if get_epsg:
             fathom_file_epsg = fathom_file_crs[-1].to_epsg()
-        if get_geographic_crs:
 ## TODO: find correct function to get geographic CRS here
+#        if get_geographic_crs:
 #            fathom_file_geographic_crs = fathom_file_crs[-1].
 
     fathom_filenames = pd.DataFrame(
@@ -1009,8 +1009,8 @@ class LidarIndex():
     def index_lidar_files(
         self,
         lidar_parent_directory,
-        hucs,
         availability_file,
+        hucs = None,
         new_availability_file = None,
         drop_index_columns = True
     ):
@@ -1050,13 +1050,6 @@ class LidarIndex():
         if drop_index_columns:
             availability = _drop_index_columns(availability)
 
-        availability = gpd.sjoin(
-            availability,
-            hucs[['HUC','geometry']].to_crs(availability.crs),
-            how = 'inner',
-            op = 'intersects'
-        )
-
         filetypes = ('*.img', '*.dem', '*.tif')
         lidardatafiles = []
         for filetype in filetypes:
@@ -1086,7 +1079,7 @@ class LidarIndex():
                 'dem',
                 row[1]
             ),
-            axis=1
+            axis = 1
         )
         availability['pathlower'] = availability['path'].apply(
             lambda path: path.lower()
@@ -1099,6 +1092,14 @@ class LidarIndex():
         availability['lidar_file'] = availability['lidar_file'].apply(
             lambda fn: str(fn)
         )
+
+        if hucs is not None:
+            availability = gpd.sjoin(
+                availability,
+                hucs[['HUC','geometry']].to_crs(availability.crs),
+                how = 'inner',
+                op = 'intersects'
+            )
 
         if new_availability_file is not None:
             availability.to_file(new_availability_file)
