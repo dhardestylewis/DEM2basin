@@ -36,7 +36,7 @@ import shutil
 from threading import Thread
 from collections import deque
 import multiprocessing
-from itertools import repeat,cycle
+from itertools import repeat
 from functools import reduce
 import uuid
 
@@ -1403,7 +1403,12 @@ def write_error_file_and_print_message(filename,message):
     print(message)
     sys.stdout.flush()
 
-def build_vrt(filenames,vrt_filename,lowest_resolution=False):
+def build_vrt(
+    filenames,
+    vrt_filename,
+    lowest_resolution = False,
+    **kwargs
+):
 
     filenames = [str(filename) for filename in filenames]
 
@@ -1415,14 +1420,19 @@ def build_vrt(filenames,vrt_filename,lowest_resolution=False):
     vrt_options = gdal.BuildVRTOptions(
         resampleAlg = 'near',
         #addAlpha = True,
-        resolution = resolution
+        resolution = resolution,
+        **kwargs
         #separate=True
     )
 
     vrt = gdal.BuildVRT(str(vrt_filename),filenames,options=vrt_options)
     vrt = None
 
-def build_vrts(lidar_index,vrt_filename_template,lowest_resolution=False):
+def build_vrts_in_lidar_index(
+    lidar_index,
+    vrt_filename_template,
+    lowest_resolution = False
+):
 
     filenames = lidar_index['lidar_file'].to_list()
 
@@ -1470,14 +1480,36 @@ def reproject_raster(
     )
     warp = None
 
-def reproject_rasters(filenames,reprojected_filenames,dst_crs=None):
+def isiterable(theElement):
 
-    for filename,reprojected_filename in zip(filenames,reprojected_filenames):
+    try:
+        iterator = iter(theElement)
+    except TypeError:
+        return(False)
+    else:
+        return(True)
+
+    return(True)
+
+def reproject_rasters(
+    filenames,
+    reprojected_filenames,
+    dst_crs = None
+):
+
+    if dst_crs is not None and not isiterable(dst_crs):
+        dst_crs = [dst_crs] * len(reprojected_filenames)
+
+    for filename,reprojected_filename,dst_crs_inner in zip(
+        filenames,
+        reprojected_filenames,
+        dst_crs
+    ):
 
         reproject_raster(
             str(filename),
             str(reprojected_filename),
-            dst_crs = dst_crs
+            dst_crs = dst_crs_inner
         )
 
 def try_except_for_huc(function,huc_id):
@@ -1489,7 +1521,7 @@ def try_except_for_huc(function,huc_id):
 
     except Exception as e:
 
-        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
+        print('[EXCEPTION] Exception on HUC: '+str(huc_id))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
@@ -1498,14 +1530,14 @@ def try_except_for_huc(function,huc_id):
         return(ExceptionWrapper(e))
 
     except:
-        print('Unexpected error on HUC: '+str(huc_prefix))
+        print('Unexpected error on HUC: '+str(huc_id))
         print(sys.exc_info()[0])
         sys.stdout.flush()
         raise
 
     else:
 
-        print('Result for HUC: '+str(huc_prefix))
+        print('Result for HUC: '+str(huc_id))
         sys.stdout.flush()
 
     finally:
@@ -1581,7 +1613,143 @@ def count_lidar_projects_in_lidar_index(lidar_index_by_huc):
 
     return(lidar_projects_with_counts)
 
+def build_vrts(
+    filenames_repeated,
+    vrts_to_composite,
+    **kwargs
+):
+
+    for filenames_inner,vrts_to_composite_inner in zip(
+        filenames_repeated,
+        vrts_to_composite
+    ):
+        build_vrt(filenames_inner,vrts_to_composite_inner,**kwargs)
+
 def _get_mosaic_and_output_raster(
+    lidar_index_by_huc,
+    huc,
+    output_raster_filename,
+    parent_temporary_directory,
+):
+
+    huc_prefix = Path(str(huc['HUC'].unique()[0]))
+
+    temporary_directory = Path(str(parent_temporary_directory)).joinpath(
+        huc_prefix
+    )
+
+    huc_prefix = str(huc_prefix)
+
+    if not temporary_directory.is_dir():
+        temporary_directory.mkdir(parents=True, exist_ok=True)
+
+    filenames = lidar_index_by_huc['lidar_file'].to_list()
+
+    lidar_projects_with_counts = dem2basin.count_lidar_projects_in_lidar_index(
+        lidar_index_by_huc
+    )
+
+    different_epsgs = lidar_projects_with_counts['epsg'].unique().to_list()
+
+    vrts_to_composite = []
+    dst_crs_epsgs = []
+    for epsg in different_epsgs.to_list():
+        vrts_to_composite.append(Path(str(temporary_directory)).joinpath(
+            huc_prefix +
+            '-' +
+            str(epsg) +
+            '.vrt'
+        ))
+        dst_crs_epsgs.append('EPSG:' + str(epsg))
+
+    filenames_repeated = [filenames] * len(vrts_to_composite)
+
+    ## Build a new VRT for each different CRS found
+    try_except_for_huc(
+        build_vrts(
+            filenames_repeated,
+            vrts_to_composite,
+            allowProjectionDifference = True
+        ),
+        huc_prefix
+    )
+
+    reprojected_vrts_filenames = [
+        Path(str(vrt)).parent.joinpath(
+            Path(
+                os.path.splitext(str(Path(str(vrt)).name))[0] +
+                '-reprojected.vrt',
+            )
+        )
+        for vrt
+        in vrts_to_composite
+    ]
+
+    ## Reproject VRTs to each different CRS for this study area
+    try_except_for_huc(
+        reproject_rasters(
+            vrts_to_composite,
+            reprojected_vrts_filenames,
+            dst_crs = dst_crs_epsgs
+        ),
+        huc_prefix
+    )
+
+    same_projection_vrts_filenames = [
+        Path(str(vrt)).parent.joinpath(
+            Path(
+                os.path.splitext(str(Path(str(vrt)).name))[0] +
+                '-' +
+                str(huc.crs.to_epsg())
+                '.vrt',
+            )
+        )
+        for vrt
+        in reprojected_vrts_filenames
+    ]
+
+    ## Reproject each of these different CRSs VRTs to the same CRS VRTs
+    try_except_for_huc(
+        reproject_rasters(
+            reprojected_vrts_filenames,
+            same_projection_vrts_filenames,
+            dst_crs = huc.crs
+        ),
+        huc_prefix
+    )
+
+    temporary_vrt_file = temporary_directory.joinpath(
+        huc_prefix + '.vrt'
+    )
+
+    ## Build VRTs from reprojected VRTs
+    try_except_for_huc(
+        build_vrt(
+            reprojected_vrts_filenames,
+            temporary_vrt_file,
+            allowProjectionDifference = True
+        ),
+        huc_prefix
+    )
+
+    temporary_huc_file = temporary_directory.joinpath(
+        huc_prefix + '.geojson'
+    )
+
+    huc.to_file(temporary_huc_file)
+
+    ## Reproject VRTs to the same CRS and output
+    try_except_for_huc(
+        reproject_raster(
+            str(temporary_vrt_file),
+            str(output_raster_filename),
+            raster_mask_filename = str(temporary_huc_file),
+            dst_crs = huc.crs
+        ),
+        huc_prefix
+    )
+
+def _get_mosaic_and_output_raster_dev(
 #def reproject_lidar_tiles_and_build_vrt_by_huc(
     lidar_index_by_huc,
     huc,
@@ -1599,11 +1767,6 @@ def _get_mosaic_and_output_raster(
         temporary_directory.mkdir(parents=True, exist_ok=True)
 
     filenames = lidar_index_by_huc['lidar_file'].to_list()
-    reprojected_filenames = lidar_index_by_huc['lidar_file'].apply(
-        lambda filename: temporary_directory.joinpath(
-            Path(str(filename)).name
-        )
-    ).to_list()
 
     lidar_projects_with_counts = dem2basin.count_lidar_projects_in_lidar_index(
         lidar_index_by_huc
@@ -1669,12 +1832,12 @@ def _get_mosaic_and_output_raster(
     ]
 
     try:
-        for vrt,reprojected_vrt,crs in zip(
+        for vrt,reprojected_vrt,epsg in zip(
             vrts_to_composite,
             reprojected_vrts_filenames,
             different_epsgs
         ):
-            reproject_raster(vrt,reprojected_vrt,dst_crs='EPSG:'+str(crs))
+            reproject_raster(vrt,reprojected_vrt,dst_crs='EPSG:'+str(epsg))
     except Exception as e:
 
         print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
@@ -1698,9 +1861,6 @@ def _get_mosaic_and_output_raster(
     finally:
         print('Reached finally clause')
         sys.stdout.flush()
-
-
-#   reproject_rasters(filenames,reprojected_filenames,huc.crs)
 
     temporary_vrt_file = temporary_directory.joinpath(
         str(huc_prefix) + '.vrt'
