@@ -1819,7 +1819,6 @@ def _get_mosaic_and_output_raster_dev(
         print('Reached finally clause')
         sys.stdout.flush()
 
-
     reprojected_vrts_filenames = [
         Path(str(vrt)).parent.joinpath(
             Path(
@@ -1891,7 +1890,6 @@ def _get_mosaic_and_output_raster_dev(
     finally:
         print('Reached finally clause')
         sys.stdout.flush()
-
 
     temporary_huc_file = temporary_directory.joinpath(
         str(huc_prefix) + '.geojson'
@@ -2291,31 +2289,145 @@ def make_parent_directories(filenames):
     for filename in filenames:
         Path(str(filename)).parent.mkdir(parents=True, exist_ok=True)
 
+def prepare_and_output_geoflod_gis_inputs_by_huc(
+    shapefile,
+    hucs_file,
+    nhd_file,
+    lidar_availability_file,
+    lidar_parent_directory,
+    output_parent_directory,
+    temporary_parent_directory,
+    **kwargs
+):
+
+    (
+        hucs,
+        flowlines,
+        catchments,
+        lidar_index
+    ) = prepare_geoflood_gis_inputs(
+        shapefile,
+        hucs_file,
+        nhd_file,
+        lidar_availability_file,
+        lidar_parent_directory
+    )
+
+    huc_ids = get_merged_column(
+        'HUC',
+        [lidar_index,flowlines,catchments,hucs]
+    )
+
+    [
+        hucs_by_huc,
+        flowlines_by_huc,
+        catchments_by_huc,
+        lidar_index_by_huc
+    ] = list_geodataframes_grouped_by_column(
+        [hucs,flowlines,catchments,lidar_index],
+        huc_ids,
+        column = 'HUC'
+    )
+
+    ## TODO: Consider replacing with `make_parent_directories` elsewhere here
+    output_directories_by_huc = []
+    temporary_directories_by_huc = []
+    for huc_id in huc_ids:
+
+        output_directory = Path(str(output_parent_directoy)).joinpath(
+            Path(str(huc_id))
+        )
+        output_directory.mkdir(parents=True,exist_ok=True)
+        output_directories_by_huc.append(
+            output_directory
+        )
+
+        temporary_directory = Path(str(output_parent_directoy)).joinpath(
+            Path(str(huc_id))
+        )
+        temporary_directory.mkdir(parents=True,exist_ok=True)
+        temporary_directories_by_huc.append(
+            temporary_directory
+        )
+
+    output_geoflood_gis_inputs_by_huc(
+        output_directories_by_huc,
+        flowlines_by_huc,
+        catchments_by_huc,
+        lidar_indices_by_huc,
+        hucs_by_huc,
+        temporary_directories_by_huc,
+        **kwargs
+    )
+
+def output_geoflood_gis_inputs_by_huc(
+    output_directories_by_huc,
+    flowlines_by_huc,
+    catchments_by_huc,
+    lidar_indices_by_huc,
+    hucs_by_huc,
+    temporary_directories_by_huc,
+    **kwargs
+):
+
+    for (
+        output_directory,
+        flowlines,
+        catchments,
+        lidar_index,
+        hucs,
+        temporary_directory
+    ) in zip(
+        output_directories_by_huc,
+        flowlines_by_huc,
+        catchments_by_huc,
+        lidar_indices_by_huc,
+        hucs_by_huc,
+        temporary_directories_by_huc
+    ):
+
+        output_geoflood_gis_inputs(
+            output_directory,
+            flowlines,
+            catchments,
+            lidar_index,
+            hucs,
+            temporary_directory,
+            **kwargs
+        )
+
 def output_geoflood_gis_inputs(
     output_directory,
     flowlines,
     catchments,
     lidar_index,
     hucs,
-    temporary_directory
+    temporary_directory,
+    exclude_raster_input = False
+    exclude_vector_inputs = False
 ):
+    ## TODO: this is implicitly for a single HUC right now
 
-    filename = os.path.join(output_directory, 'Flowline.shp')
-    write_geodataframe(flowlines,filename)
+    if not exclude_vector_inputs:
 
-    filename = os.path.join(output_directory, 'Roughness.csv')
-    write_roughness_table(flowlines,filename)
+        filename = os.path.join(output_directory, 'Flowline.shp')
+        write_geodataframe(flowlines,filename)
+    
+        filename = os.path.join(output_directory, 'Roughness.csv')
+        write_roughness_table(flowlines,filename)
+    
+        filename = os.path.join(output_directory, 'Catchment.shp')
+        write_geodataframe(catchments,filename)
 
-    filename = os.path.join(output_directory, 'Catchment.shp')
-    write_geodataframe(catchments,filename)
+    if not exclude_raster_input:
 
-    filename = os.path.join(output_directory, 'Elevation.tif')
-    get_mosaic_and_output_raster(
-        lidar_index,
-        hucs,
-        filename,
-        temporary_directory
-    )
+        filename = os.path.join(output_directory, 'Elevation.tif')
+        get_mosaic_and_output_raster(
+            lidar_index,
+            hucs,
+            filename,
+            temporary_directory
+        )
 
 #@profile
 def output_files(arguments,return_dict):
@@ -2811,6 +2923,7 @@ def list_geodataframes_grouped_by_column(
     column_elements_subset,
     column = 'HUC'
 ):
+    ## TODO: Sorting built-in here. Above functions treat sorting as an option
 
     lists_of_geodataframes = []
 
@@ -2958,7 +3071,12 @@ def main():
         _drop_index_columns_inplace([hucs,flowlines,catchments,lidar_index])
 
         ## Divide into lists per HUC
-        list_geodataframes_grouped_by_column(
+        [
+            hucs,
+            flowlines,
+            catchments,
+            lidar_index
+        ] = list_geodataframes_grouped_by_column(
             [hucs,flowlines,catchments,lidar_index],
             huc_ids,
             column = 'HUC'
@@ -3028,6 +3146,7 @@ def main():
 
     output_prefix = os.path.splitext(os.path.basename(args.shapefile))[0]
     remove_keys = []
+
     if (
         not args.overwrite or not (
             args.overwrite_flowlines and
@@ -3048,6 +3167,7 @@ def main():
                 'rasterDataDoesNotEnclose.err'
             )).is_file():
                 remove_keys.append(huc)
+
     remove_keys_idcs = [huc_ids.index(key) for key in remove_keys]
     flowlines = [
         flowlines[key]
