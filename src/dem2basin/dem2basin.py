@@ -1700,8 +1700,8 @@ def _get_mosaic_and_output_raster(
             Path(
                 os.path.splitext(str(Path(str(vrt)).name))[0] +
                 '-' +
-                str(huc.crs.to_epsg())
-                '.vrt',
+                str(huc.crs.to_epsg()) +
+                '.vrt'
             )
         )
         for vrt
@@ -2403,7 +2403,7 @@ def output_geoflood_gis_inputs(
     lidar_index,
     hucs,
     temporary_directory,
-    exclude_raster_input = False
+    exclude_raster_input = False,
     exclude_vector_inputs = False
 ):
     ## TODO: this is implicitly for a single HUC right now
