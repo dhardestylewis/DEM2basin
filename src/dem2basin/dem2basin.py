@@ -1043,13 +1043,35 @@ class LidarIndex():
         ## TODO: divide into:
         ##   - correcting the LIDAR availability file, and
         ##   - applying HUCs column attribute
-    
+        ##   - correct by resolution string mismatch
+        
+        
+        ## Loading and preliminary preprocessing of Lidar availability file
+        ####
+        
+        ## Load TNRIS Lidar availability file, should always be at this link:
+        ## https://cdn.tnris.org/data/lidar/tnris-lidar_48_vector.zip
         availability = gpd.read_file(lidar_availability_file,mask=hucs)
+        
+        ## Remove features which don't have any underlying DEMs
+        ## Note: these features might has lidar point-cloud or other Lidar
+        ## products, but we are only interested in the DEMs for now
+        ## TODO: extend for lidar point-cloud and for Lidar hypsographies
         availability = availability[availability['demname']!='No Data Exist']
 
+        ## Make columns conform to common Geopandas errors:
+        ## Geopandas does not like columns named "index", "index_left" and
+        ## "index_right"
         if drop_index_columns:
             availability = _drop_index_columns(availability)
 
+            
+        ## Lidar dataset search and indexing
+        ####
+            
+        ## These are the only raster DEM file types in the TNRIS Lidar dataset
+        ## Pattern-matching using glob wildcard (*) for DEMs with each of
+        ## these filetypes
         filetypes = ('*.img', '*.dem', '*.tif')
         lidardatafiles = []
         for filetype in filetypes:
@@ -1060,11 +1082,13 @@ class LidarIndex():
                     filetype
                 ))
             ))
+        ## lowercasing all found TNRIS Lidar DEM filenames
         lidardatafileslower = [
             os.path.splitext(os.path.join(*fn.parts).lower())[0]
             for fn
             in lidardatafiles
         ]
+        ## organizing results into a DataFrame
         lidardatafiles = pd.DataFrame(
             data = {
                 'lidar_file': lidardatafiles,
@@ -1072,6 +1096,9 @@ class LidarIndex():
             }
         )
 
+        
+        ## Construct hypothetical filenames for Lidar DEMs based on
+        ## availability file's attributes
         availability['path'] = availability[['dirname','demname']].apply(
             lambda row: os.path.join(
                 os.path.join(*Path(lidar_parent_directory).parts),
@@ -1081,18 +1108,31 @@ class LidarIndex():
             ),
             axis = 1
         )
+        ## Lowercasing these hypothetical pathnames
         availability['pathlower'] = availability['path'].apply(
             lambda path: path.lower()
         )
+        
+        
+        ## At this point, it is possible to merge on these two
+        ## lowercased pathnames
         availability = availability.merge(lidardatafiles,on='pathlower')
+        ## Now that we've merged, we can drop intermediate columns
+        ## At this point, the found 'lidar_file' pathname is
+        ## georeferenced into the availability file
         availability.drop(
             columns = ['path','pathlower'],
             inplace = True
         )
+        ## Be sure that before we output this new GeoDataFrame, that
+        ## the filenames are strings, not pathlib.PurePath objects
         availability['lidar_file'] = availability['lidar_file'].apply(
             lambda fn: str(fn)
         )
 
+        
+        ## Optional: intersect against HUC file to assign each HUC
+        ## every Lidar DEM tile that corresponds to it
         if hucs is not None:
             availability = gpd.sjoin(
                 availability,
@@ -1101,9 +1141,13 @@ class LidarIndex():
                 op = 'intersects'
             )
 
+        ## Optional: output revised availability file to this filename
         if new_availability_file is not None:
             availability.to_file(new_availability_file)
 
+            
+        ## This function always returns a GeoDataFrame of the revised
+        ## availability file
         return(availability)
     
 class ExceptionWrapper(object):
