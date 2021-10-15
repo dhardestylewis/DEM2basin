@@ -2289,7 +2289,7 @@ def make_parent_directories(filenames):
     for filename in filenames:
         Path(str(filename)).parent.mkdir(parents=True, exist_ok=True)
 
-def prepare_and_output_geoflod_gis_inputs_by_huc(
+def prepare_and_output_geoflood_gis_inputs_by_huc(
     shapefile,
     hucs_file,
     nhd_file,
