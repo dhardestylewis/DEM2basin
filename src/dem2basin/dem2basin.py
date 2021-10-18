@@ -30,7 +30,7 @@ from rasterio.crs import CRS
 import pyproj
 
 import os
-from pathlib import Path
+from pathlib import Path, PurePath
 import shutil
 
 from threading import Thread
@@ -340,7 +340,7 @@ def read_file_or_gdf(
     :rtype: geopandas.GeoDataFrame
     """
 
-    if isinstance(shape,(str,pathlib.PurePath)):
+    if isinstance(shape,(str,PurePath)):
         shape_input = gpd.read_file(shape,**kwargs)
     else:
         shape_input = shape.copy()
@@ -394,17 +394,17 @@ def get_hucs_by_shape(
     #hucs_input = 'data/WBD_National_GDB/WBD_National_GDB.shp/WBDHU12.shp'
     hucs_gdf = read_file_or_gdf(hucs,layer=hucs_layer)
 
-    crs = find_utm(hucs_gdf,select_utm)
+    crs = find_utm(hucs_gdf,select_utm=select_utm)
     if not to_utm:
         hucs_original = hucs_gdf.copy()
-    to_crs(crs,[hucs_gdf,shape])
+    to_crs(crs,[hucs_gdf,shape_gdf])
 
     if drop_index_columns:
         hucs_gdf = _drop_index_columns(hucs_gdf)
 
     hucs_gdf = gpd.overlay(
         hucs_gdf,
-        shape,
+        shape_gdf,
         how = 'intersection'
     )
 
@@ -671,7 +671,10 @@ def find_common_utm(shape_original):
 
     return(output_utm)
 
-def find_utm(gdf_original,select_utm=None):
+def find_utm(
+    gdf_original,
+    select_utm = None
+):
     """
     finds a single UTM CRS best suited for the geometries of a geodataframe
     """
@@ -1008,10 +1011,10 @@ class LidarIndex():
 
     def index_lidar_files(
         self,
+        lidar_availability_file,
         lidar_parent_directory,
-        availability_file,
         hucs = None,
-        new_availability_file = None,
+        new_lidar_availability_file = None,
         drop_index_columns = True
     ):
         """
@@ -1101,8 +1104,10 @@ class LidarIndex():
                 op = 'intersects'
             )
 
-        if new_availability_file is not None:
-            availability.to_file(new_availability_file)
+        if new_lidar_availability_file is not None:
+            print(new_lidar_availability_file)
+            sys.stdout.flush()
+            availability.to_file(str(new_lidar_availability_file))
 
         return(availability)
     
@@ -1226,7 +1231,10 @@ def write_roughness_table(
         skip_existing = skip_existing
     )
 
-def get_flowlines_and_representative_points_by_huc(hucs,nhd_input):
+def get_flowlines_and_representative_points_by_huc(
+    hucs,
+    nhd_input
+):
     """
     Attributes HUCs to flowlines based on each flowline's representative point
 
@@ -1645,15 +1653,15 @@ def _get_mosaic_and_output_raster(
 
     filenames = lidar_index_by_huc['lidar_file'].to_list()
 
-    lidar_projects_with_counts = dem2basin.count_lidar_projects_in_lidar_index(
+    lidar_projects_with_counts = count_lidar_projects_in_lidar_index(
         lidar_index_by_huc
     )
 
-    different_epsgs = lidar_projects_with_counts['epsg'].unique().to_list()
+    different_epsgs = list(lidar_projects_with_counts['epsg'].unique())
 
     vrts_to_composite = []
     dst_crs_epsgs = []
-    for epsg in different_epsgs.to_list():
+    for epsg in different_epsgs:
         vrts_to_composite.append(Path(str(temporary_directory)).joinpath(
             huc_prefix +
             '-' +
@@ -1768,7 +1776,7 @@ def _get_mosaic_and_output_raster_dev(
 
     filenames = lidar_index_by_huc['lidar_file'].to_list()
 
-    lidar_projects_with_counts = dem2basin.count_lidar_projects_in_lidar_index(
+    lidar_projects_with_counts = count_lidar_projects_in_lidar_index(
         lidar_index_by_huc
     )
 
@@ -2290,15 +2298,20 @@ def make_parent_directories(filenames):
         Path(str(filename)).parent.mkdir(parents=True, exist_ok=True)
 
 def prepare_and_output_geoflood_gis_inputs_by_huc(
-    shapefile,
-    hucs_file,
-    nhd_file,
-    lidar_availability_file,
+    shape_input,
+    hucs_input,
+    nhd_input,
+    lidar_availability_input,
     lidar_parent_directory,
     output_parent_directory,
     temporary_parent_directory,
+    select_utm = None,
+    new_lidar_availability_file = None,
+    correct_lidar_availability_input = True,
+    pickle_file = None,
     **kwargs
 ):
+    ## TODO: include parameters to output and restart from intermediate products
 
     (
         hucs,
@@ -2306,11 +2319,14 @@ def prepare_and_output_geoflood_gis_inputs_by_huc(
         catchments,
         lidar_index
     ) = prepare_geoflood_gis_inputs(
-        shapefile,
-        hucs_file,
-        nhd_file,
-        lidar_availability_file,
-        lidar_parent_directory
+        shape_input,
+        hucs_input,
+        nhd_input,
+        lidar_availability_input,
+        lidar_parent_directory,
+        select_utm = select_utm,
+        new_lidar_availability_file = None,
+        correct_lidar_availability_input = True
     )
 
     huc_ids = get_merged_column(
@@ -2334,7 +2350,7 @@ def prepare_and_output_geoflood_gis_inputs_by_huc(
     temporary_directories_by_huc = []
     for huc_id in huc_ids:
 
-        output_directory = Path(str(output_parent_directoy)).joinpath(
+        output_directory = Path(str(output_parent_directory)).joinpath(
             Path(str(huc_id))
         )
         output_directory.mkdir(parents=True,exist_ok=True)
@@ -2342,7 +2358,7 @@ def prepare_and_output_geoflood_gis_inputs_by_huc(
             output_directory
         )
 
-        temporary_directory = Path(str(output_parent_directoy)).joinpath(
+        temporary_directory = Path(str(output_parent_directory)).joinpath(
             Path(str(huc_id))
         )
         temporary_directory.mkdir(parents=True,exist_ok=True)
@@ -2350,11 +2366,23 @@ def prepare_and_output_geoflood_gis_inputs_by_huc(
             temporary_directory
         )
 
+    if pickle_file is not None:
+        pickle_multiple_objects(str(pickle_file),
+            [
+                output_directories_by_huc,
+                flowlines_by_huc,
+                catchments_by_huc,
+                lidar_index_by_huc,
+                hucs_by_huc,
+                temporary_directories_by_huc
+            ]
+        )
+
     output_geoflood_gis_inputs_by_huc(
         output_directories_by_huc,
         flowlines_by_huc,
         catchments_by_huc,
-        lidar_indices_by_huc,
+        lidar_index_by_huc,
         hucs_by_huc,
         temporary_directories_by_huc,
         **kwargs
@@ -2364,7 +2392,7 @@ def output_geoflood_gis_inputs_by_huc(
     output_directories_by_huc,
     flowlines_by_huc,
     catchments_by_huc,
-    lidar_indices_by_huc,
+    lidar_index_by_huc,
     hucs_by_huc,
     temporary_directories_by_huc,
     **kwargs
@@ -2381,7 +2409,7 @@ def output_geoflood_gis_inputs_by_huc(
         output_directories_by_huc,
         flowlines_by_huc,
         catchments_by_huc,
-        lidar_indices_by_huc,
+        lidar_index_by_huc,
         hucs_by_huc,
         temporary_directories_by_huc
     ):
@@ -2784,13 +2812,15 @@ def get_lidar_intermediate_vectors(
     lidar_availability_input = None,
     lidar_parent_directory = None,
     new_lidar_availability_file = None,
-    reproject = True
+    reproject = True,
+    select_utm = None
 ):
 
     flowlines, catchments = get_flowlines_and_catchments_by_shape(
         shape_input,
         hucs_input,
-        nhd_input
+        nhd_input,
+        select_utm = select_utm
     )
 
     hucs = get_hucs_from_catchments(catchments)
@@ -2802,9 +2832,9 @@ def get_lidar_intermediate_vectors(
         #lidar_index = index_lidar_files_dev(hucs)
         lidar_index_obj = LidarIndex()
         lidar_index = lidar_index_obj.index_lidar_files(
-            hucs,
             lidar_availability_input,
-            lidar_parent_directory
+            lidar_parent_directory,
+            hucs = hucs
         )
     elif (
         lidar_availability_input is not None and
@@ -2830,10 +2860,11 @@ def get_flowlines_and_catchments_by_shape(
     shape_input,
     hucs_input,
     nhd_input,
-    reproject = True
+    reproject = True,
+    select_utm = None
 ):
 
-    hucs = get_hucs_by_shape(shape_input,hucs_input)
+    hucs = get_hucs_by_shape(shape_input,hucs_input,select_utm=select_utm)
 
     (
         flowlines,
@@ -2882,11 +2913,14 @@ def prepare_geoflood_gis_inputs(
     hucs_input,
     nhd_input,
     lidar_availability_input,
-    lidar_parent_directory
+    lidar_parent_directory,
+    select_utm = None,
+    new_lidar_availability_file = None,
+    correct_lidar_availability_input = True
 ):
     ## TODO: redundant method: merge with above `get_lidar_intermediate_vectors`
 
-    hucs = get_hucs_by_shape(shape_input,hucs_input)
+    hucs = get_hucs_by_shape(shape_input,hucs_input,select_utm=select_utm)
 
     (
         flowlines,
@@ -2906,13 +2940,17 @@ def prepare_geoflood_gis_inputs(
 
     hucs = get_hucs_from_catchments(catchments)
 
-    #lidar_index = index_lidar_files_dev(hucs)
-    lidar_index_obj = LidarIndex()
-    lidar_index = lidar_index_obj.index_lidar_files(
-        hucs,
-        lidar_availability_input,
-        lidar_parent_directory
-    )
+    if correct_lidar_availability_input:
+        #lidar_index = index_lidar_files_dev(hucs)
+        lidar_index_obj = LidarIndex()
+        lidar_index = lidar_index_obj.index_lidar_files(
+            lidar_availability_input,
+            lidar_parent_directory,
+            hucs = hucs,
+            new_lidar_availability_file = new_lidar_availability_file
+        )
+    else:
+        lidar_index = read_file_or_gdf(lidar_availability_input)
 
     to_crs(hucs.crs,[flowlines,catchments,lidar_index])
 
@@ -2935,7 +2973,7 @@ def list_geodataframes_grouped_by_column(
             ].sort_values(column).groupby(column)
         )).values()))
 
-    return(list_of_geodataframes)
+    return(lists_of_geodataframes)
 
 def sort_lists_of_geodataframes_by_index(geodataframes,index):
 
@@ -3044,7 +3082,8 @@ def main():
             args.hucs,
             args.nhd,
             args.lidar_availability,
-            args.lidar_parent_directory
+            args.lidar_parent_directory,
+            select_utm = select_utm
         )
         
         huc_ids = get_merged_column(
