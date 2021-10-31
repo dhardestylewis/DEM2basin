@@ -13,6 +13,7 @@ dependencies:
   - rasterio
   - pyproj
   - tblib
+  - psutil
   - sphinx
   - pip
 prefix: /work/04950/dhl/stampede2/miniconda3/envs/dem2basin
