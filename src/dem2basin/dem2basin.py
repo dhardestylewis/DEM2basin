@@ -1521,18 +1521,18 @@ def reproject_rasters(
         )
 
 def timing(f):
+    ## Influenced by:
     ## Attribution-ShareAlike 4.0 International (CC BY-SA 4.0) 2011 Mike Lewis
     ## https://stackoverflow.com/a/5478448/16518080
-    def wrap(*args, **kwargs):
-        time1 = time.time()
-        ret = f(*args, **kwargs)
-        time2 = time.time()
-        print('{:s} function took {:.3f} ms'.format(
-            f.__name__,
-            (time2-time1)*1000.0
-        ))
-        return(ret)
-    return(wrap)
+    start_time = time.time()
+    ret = f
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print('{:s} function took {:.3f} seconds'.format(
+        f.__name__,
+        elapsed_time * 10**6
+    ))
+    return((ret,elapsed_time))
 
 def try_except_for_huc(function,huc_id):
 

@@ -17,3 +17,5 @@ terracotta
 pandas
 memory_profiler
 psutil
+rtree
+GDAL
