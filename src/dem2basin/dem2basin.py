@@ -1658,6 +1658,14 @@ def try_except_for_huc(function,huc_id):
 
     return(result)
 
+def get_projections_of_each_file(lidar_projects_with_counts)
+
+    lidar_projects_with_counts['crs'] = lidar_projects_with_counts[
+        'lidar_file'
+    ].apply(
+        lambda fn: pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection())
+    )
+
 def count_lidar_projects_in_lidar_index(lidar_index_by_huc):
 
     lidar_index_by_project_grouped = lidar_index_by_huc.groupby('dirname')
@@ -1692,11 +1700,12 @@ def count_lidar_projects_in_lidar_index(lidar_index_by_huc):
     huc_prefix = Path(str(lidar_index_by_huc['HUC'].unique()[0]))
 
     try_except_for_huc(
-        lidar_projects_with_counts['crs'] = lidar_projects_with_counts[
-            'lidar_file'
-        ].apply(
-            lambda fn: pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection())
-        ),
+        get_projections_of_each_file(lidar_projects_with_counts),
+#        lidar_projects_with_counts['crs'] = lidar_projects_with_counts[
+#            'lidar_file'
+#        ].apply(
+#            lambda fn: pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection())
+#        ),
         huc_prefix
     )
 
