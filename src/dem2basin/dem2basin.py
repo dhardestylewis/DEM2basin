@@ -10,6 +10,7 @@ import csv
 import fiona
 import pandas as pd
 import geopandas as gpd
+from shapely.geometry import box
 
 import utm
 
@@ -982,6 +983,93 @@ def index_fathom_files(
 
     return(availability)
     
+def dissolve_coverage_file_by_project(
+    coverage_input
+):
+
+    coverage = read_file_or_gdf(coverage_input)
+
+    project_coverage = coverage.dissolve(by=['dirname'])
+
+    return(project_coverage)
+
+def get_coverage_by_shape(
+    shape_input,
+    coverage_input
+):
+
+    shape = read_file_or_gdf(shape_input)
+    coverage = read_file_or_gdf(coverage_input)
+
+    coverage = coverage.loc[coverage.overlay(shape,how='intersection').index]
+
+    return(coverage)
+
+def append_subdirectory(
+    projects,
+    subdirectory
+):
+
+    project_subdirectory = Path(str(project)).joinpath(subdirectory)
+
+    if project_subdirectory.is_dir():
+        projects.append(project_subdirectory)
+
+    return(projects)
+
+def get_bounding_boxes_by_project(
+    project_coverage_input
+):
+
+    project_coverage = read_file_or_gdf(project_coverage_input)
+
+    projects = []
+    for project in project_coverage.index():
+        projects = append_subdirectory(projects,'dem')
+        projects = append_subdirectory(projects,'tiles')
+            
+    dem_tilenames = []
+    filetypes = ('*.img', '*.dem', '*.tif', '*.jp2')
+    for filetype in filetypes:
+        for project in projects:
+            for root, dirs, filenames in os.walk(str(project)):
+                for filename in filenames:
+                    if filename.endswith(filetype):
+                        dem_tilenames.append(os.path.join(root,filename))
+
+    dem_tile_bounds = []
+    for dem_tilename in dem_tilenames:
+        dem_tile_bounds.append((
+            dem_tilename,
+            rasterio.open(dem_tilename).bounds
+        ))
+
+    dem_tiles = gpd.DataFrame(
+        dem_tile_bounds,
+        columns = ['lidar_file','bounds']
+    )
+
+    dem_tiles.geometry = dem_tiles['bounds'].apply(
+        lambda bounds: box(*bounds)
+    )
+
+    return(dem_tiles)
+
+def get_bounding_boxes_from_coverage_by_shape(
+    shape_input,
+    coverage_input
+):
+
+    coverage = read_file_or_gdf(coverage_input)
+
+    coverage = dissolve_coverage_file_by_project(coverage)
+
+    project_coverage = get_coverage_by_shape(shape_input,coverage)
+
+    dem_tiles = get_bounding_boxes_by_project(project_coverage)
+
+    return(dem_tiles)
+
 class LidarIndex():
     """
     Georeference TNRIS LIDAR 1m raster dataset
@@ -1053,7 +1141,7 @@ class LidarIndex():
         if drop_index_columns:
             availability = _drop_index_columns(availability)
 
-        filetypes = ('*.img', '*.dem', '*.tif')
+        filetypes = ('*.img', '*.dem', '*.tif', '*.jp2')
         lidardatafiles = []
         for filetype in filetypes:
             lidardatafiles.extend(list(
@@ -1474,6 +1562,7 @@ def reproject_raster(
 
     if raster_mask_filename is not None:
         crop_to_mask_file = True
+        raster_mask_filename = str(raster_mask_filename)
     else:
         crop_to_mask_file = False
 
@@ -1587,7 +1676,9 @@ def count_lidar_projects_in_lidar_index(lidar_index_by_huc):
         columns = ['dirname','count']
     )
     lidar_projects_with_counts.sort_values(by=['count'])
-    lidar_projects_with_info_tile = lidar_index_by_huc.groupby('dirname').first()[['lidar_file']].reset_index()
+    lidar_projects_with_info_tile = lidar_index_by_huc.groupby(
+        'dirname'
+    ).first()[['lidar_file']].reset_index()
     lidar_projects_with_counts = lidar_projects_with_info_tile.merge(
         lidar_projects_with_counts,
         on = ['dirname']
@@ -1599,37 +1690,19 @@ def count_lidar_projects_in_lidar_index(lidar_index_by_huc):
     )
 
     huc_prefix = Path(str(lidar_index_by_huc['HUC'].unique()[0]))
-    try:
+
+    try_except_for_huc(
         lidar_projects_with_counts['crs'] = lidar_projects_with_counts[
             'lidar_file'
         ].apply(
             lambda fn: pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection())
-        )
-    except Exception as e:
+        ),
+        huc_prefix
+    )
 
-        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
-        print(e)
-        sys.stdout.flush()
-        return(ExceptionWrapper(e))
-
-    except:
-        print('Unexpected error on HUC: '+str(huc_prefix))
-        print(sys.exc_info()[0])
-        sys.stdout.flush()
-        raise
-
-    else:
-        print('Result for HUC: '+str(huc_prefix))
-        sys.stdout.flush()
-
-    finally:
-        print('Reached finally clause')
-        sys.stdout.flush()
-
-    lidar_projects_with_counts['epsg'] = lidar_projects_with_counts['crs'].apply(
+    lidar_projects_with_counts['epsg'] = lidar_projects_with_counts[
+        'crs'
+    ].apply(
         lambda crs: crs.to_epsg()
     )
 
@@ -1646,6 +1719,79 @@ def build_vrts(
         vrts_to_composite
     ):
         build_vrt(filenames_inner,vrts_to_composite_inner,**kwargs)
+
+def _get_mosaic_and_output_raster_simple(
+    lidar_index_by_huc,
+    huc,
+    output_raster_filename,
+    parent_temporary_directory,
+):
+
+    huc_prefix = Path(str(huc['HUC'].unique()[0]))
+
+    temporary_directory = Path(str(parent_temporary_directory)).joinpath(
+        huc_prefix
+    )
+    if not temporary_directory.is_dir():
+        temporary_directory.mkdir(parents=True, exist_ok=True)
+
+    huc_prefix = str(huc_prefix)
+
+    temporary_huc_file = temporary_directory.joinpath(
+        huc_prefix + '.geojson'
+    )
+    huc.to_file(temporary_huc_file)
+
+    filenames = lidar_index_by_huc['lidar_file'].to_list()
+
+    reprojected_filenames = [
+        Path(str(filename)).parent.joinpath(
+            Path(
+                os.path.splitext(str(Path(str(filename)).name))[0] +
+                '-reprojected.vrt',
+            )
+        )
+        for filename
+        in filenames
+    ]
+
+    ## GDAL/OGR step 1
+    ## Reproject VRTs to each different CRS for this study area
+    try_except_for_huc(
+        reproject_rasters(
+            filenames,
+            reprojected_filenames,
+            dst_crs = dst_crs_epsgs
+        ),
+        huc_prefix
+    )
+
+    temporary_vrt_file = temporary_directory.joinpath(
+        huc_prefix + '.vrt'
+    )
+
+    ## GDAL/OGR step 2
+    ## Build VRTs from reprojected VRTs
+    try_except_for_huc(
+        build_vrt(
+            reprojected_filenames,
+            temporary_vrt_file,
+            allowProjectionDifference = True
+        ),
+        huc_prefix
+    )
+
+    ## GDAL/OGR step 3
+    ## Mosaic VRT, crop, and output
+    try_except_for_huc(
+        reproject_raster(
+            temporary_vrt_file,
+            output_raster_filename,
+            raster_mask_filename = temporary_huc_file,
+            dst_crs = huc.crs
+        ),
+        huc_prefix
+    )
 
 def _get_mosaic_and_output_raster(
     lidar_index_by_huc,
@@ -1664,6 +1810,12 @@ def _get_mosaic_and_output_raster(
 
     if not temporary_directory.is_dir():
         temporary_directory.mkdir(parents=True, exist_ok=True)
+
+    temporary_huc_file = temporary_directory.joinpath(
+        huc_prefix + '.geojson'
+    )
+
+    huc.to_file(temporary_huc_file)
 
     filenames = lidar_index_by_huc['lidar_file'].to_list()
 
@@ -1686,6 +1838,7 @@ def _get_mosaic_and_output_raster(
 
     filenames_repeated = [filenames] * len(vrts_to_composite)
 
+    ## GDAL/OGR step 1
     ## Build a new VRT for each different CRS found
     try_except_for_huc(
         build_vrts(
@@ -1707,6 +1860,7 @@ def _get_mosaic_and_output_raster(
         in vrts_to_composite
     ]
 
+    ## GDAL/OGR step 2
     ## Reproject VRTs to each different CRS for this study area
     try_except_for_huc(
         reproject_rasters(
@@ -1730,6 +1884,7 @@ def _get_mosaic_and_output_raster(
         in reprojected_vrts_filenames
     ]
 
+    ## GDAL/OGR step 3
     ## Reproject each of these different CRSs VRTs to the same CRS VRTs
     try_except_for_huc(
         reproject_rasters(
@@ -1744,6 +1899,7 @@ def _get_mosaic_and_output_raster(
         huc_prefix + '.vrt'
     )
 
+    ## GDAL/OGR step 4
     ## Build VRTs from reprojected VRTs
     try_except_for_huc(
         build_vrt(
@@ -1754,13 +1910,8 @@ def _get_mosaic_and_output_raster(
         huc_prefix
     )
 
-    temporary_huc_file = temporary_directory.joinpath(
-        huc_prefix + '.geojson'
-    )
-
-    huc.to_file(temporary_huc_file)
-
-    ## Reproject VRTs to the same CRS and output
+    ## GDAL/OGR step 5
+    ## Mosaic VRT, crop, and output
     try_except_for_huc(
         reproject_raster(
             str(temporary_vrt_file),
@@ -1811,6 +1962,16 @@ def _get_mosaic_and_output_raster_dev(
 
     filenames_repeated = [filenames] * len(vrts_to_composite)
     result = try_except_for_huc(function,huc_prefix)
+
+#    try_except_for_huc(
+#        (for filenames_inner,vrts_to_composite_inner in zip(
+#            filenames_repeated,
+#            vrts_to_composite
+#        ):
+#            build_vrt(filenames_inner,vrts_to_composite_inner)
+#        ),
+#        huc_prefix
+#    )
     try:
         for filenames_inner,vrts_to_composite_inner in zip(
             filenames_repeated,
@@ -1852,6 +2013,16 @@ def _get_mosaic_and_output_raster_dev(
         in vrts_to_composite
     ]
 
+#    try_except_for_huc(
+#        (for vrt,reprojected_vrt,epsg in zip(
+#            vrts_to_composite,
+#            reprojected_vrts_filenames,
+#            different_epsgs
+#        ):
+#            reproject_raster(vrt,reprojected_vrt,dst_crs='EPSG:'+str(epsg))
+#        ),
+#        huc_prefix
+#    )
     try:
         for vrt,reprojected_vrt,epsg in zip(
             vrts_to_composite,
@@ -1887,31 +2058,10 @@ def _get_mosaic_and_output_raster_dev(
         str(huc_prefix) + '.vrt'
     )
 
-    try:
-        build_vrt(reprojected_vrts_filenames,temporary_vrt_file)
-    except Exception as e:
-
-        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
-        print(e)
-        sys.stdout.flush()
-        return(ExceptionWrapper(e))
-
-    except:
-        print('Unexpected error on HUC: '+str(huc_prefix))
-        print(sys.exc_info()[0])
-        sys.stdout.flush()
-        raise
-
-    else:
-        print('Result for HUC: '+str(huc_prefix))
-        sys.stdout.flush()
-
-    finally:
-        print('Reached finally clause')
-        sys.stdout.flush()
+    try_except_for_huc(
+        build_vrt(reprojected_vrts_filenames,temporary_vrt_file),
+        huc_prefix
+    )
 
     temporary_huc_file = temporary_directory.joinpath(
         str(huc_prefix) + '.geojson'
@@ -1919,35 +2069,14 @@ def _get_mosaic_and_output_raster_dev(
 
     huc.to_file(temporary_huc_file)
 
-    try:
+    try_except_for_huc(
         reproject_raster(
             str(temporary_vrt_file),
             str(output_raster_filename),
             raster_mask_filename = str(temporary_huc_file)
-        )
-    except Exception as e:
-
-        print('[EXCEPTION] Exception on HUC: '+str(huc_prefix))
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
-        print(e)
-        sys.stdout.flush()
-        return(ExceptionWrapper(e))
-
-    except:
-        print('Unexpected error on HUC: '+str(huc_prefix))
-        print(sys.exc_info()[0])
-        sys.stdout.flush()
-        raise
-
-    else:
-        print('Result for HUC: '+str(huc_prefix))
-        sys.stdout.flush()
-
-    finally:
-        print('Reached finally clause')
-        sys.stdout.flush()
+        ),
+        huc_prefix
+    )
 
 def get_mosaic_dev(lidar_index,vrt_options,directory):
 
@@ -2354,7 +2483,12 @@ def prepare_and_output_geoflood_gis_inputs_by_huc(
         catchments_by_huc,
         lidar_index_by_huc
     ] = list_geodataframes_grouped_by_column(
-        [hucs,flowlines,catchments,lidar_index],
+        [
+            hucs,
+            flowlines,
+            catchments,
+            lidar_index
+        ],
         huc_ids,
         column = 'HUC'
     )
@@ -2363,6 +2497,8 @@ def prepare_and_output_geoflood_gis_inputs_by_huc(
     output_directories_by_huc = []
     temporary_directories_by_huc = []
     for huc_id in huc_ids:
+
+        ## TODO: replace the following 2 blocks with a function to do each
 
         output_directory = Path(str(output_parent_directory)).joinpath(
             Path(str(huc_id))
@@ -2922,17 +3058,11 @@ def unpickle_multiple_objects(pickle_file):
 
     return(objects)
 
-def prepare_geoflood_gis_inputs(
+def associate_nhdmr_with_wbd(
     shape_input,
     hucs_input,
-    nhd_input,
-    lidar_availability_input,
-    lidar_parent_directory,
-    select_utm = None,
-    new_lidar_availability_file = None,
-    correct_lidar_availability_input = True
+    select_utm = None
 ):
-    ## TODO: redundant method: merge with above `get_lidar_intermediate_vectors`
 
     hucs = get_hucs_by_shape(shape_input,hucs_input,select_utm=select_utm)
 
@@ -2954,6 +3084,55 @@ def prepare_geoflood_gis_inputs(
 
     hucs = get_hucs_from_catchments(catchments)
 
+    return(flowlines,catchments,hucs)
+
+def prepare_geoflood_gis_inputs(
+    shape_input,
+    hucs_input,
+    nhd_input,
+    lidar_availability_input,
+    lidar_parent_directory,
+    select_utm = None,
+    new_lidar_availability_file = None,
+    correct_lidar_availability_input = True
+):
+    ## TODO: redundant method: merge with above `get_lidar_intermediate_vectors`
+
+    ## BEGIN SECTION 1
+    ## ASSOCIATING NHD MR with WBD
+
+    ## TODO: replace this section with association algorithm:
+    #flowlines,catchments,hucs = associate_nhdmr_with_wbd(
+    #    shape_input,
+    #    hucs_input,
+    #    select_utm = None
+    #)
+
+    hucs = get_hucs_by_shape(shape_input,hucs_input,select_utm=select_utm)
+
+    (
+        flowlines,
+        flowline_representative_points
+    ) = get_flowlines_and_representative_points_by_huc(hucs,nhd_input)
+
+    catchments = get_catchments_by_huc(
+        hucs,
+        nhd_input,
+        flowline_representative_points
+    )
+
+    flowlines = index_dataframe_by_dataframe(
+        flowlines,
+        catchments
+    )
+
+    hucs = get_hucs_from_catchments(catchments)
+
+    ## END SECTION 1
+
+    ## BEGIN SECTION 2
+    ## GATHERING TNRIS LIDAR COVERAGE OF HUCS intersecting our study area
+
     if correct_lidar_availability_input:
         #lidar_index = index_lidar_files_dev(hucs)
         lidar_index_obj = LidarIndex()
@@ -2965,6 +3144,8 @@ def prepare_geoflood_gis_inputs(
         )
     else:
         lidar_index = read_file_or_gdf(lidar_availability_input)
+
+    ## END SECTION 2
 
     to_crs(hucs.crs,[flowlines,catchments,lidar_index])
 
