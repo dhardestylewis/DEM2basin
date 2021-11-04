@@ -1132,7 +1132,9 @@ def get_bounding_boxes_by_project(
             project,
             'tiles'
         )
-            
+
+    print(projects)
+        
     dem_tilenames = []
     filetypes = ('*.img', '*.dem', '*.tif', '*.jp2')
     for filetype in filetypes:
@@ -1142,6 +1144,8 @@ def get_bounding_boxes_by_project(
                     if filename.endswith(filetype):
                         dem_tilenames.append(os.path.join(root,filename))
 
+    print(dem_tilenames)
+
     dem_tile_bounds = []
     for dem_tilename in dem_tilenames:
         dem_tile_bounds.append((
@@ -1149,14 +1153,20 @@ def get_bounding_boxes_by_project(
             rasterio.open(dem_tilename).bounds
         ))
 
+    print(dem_tile_bounds)
+
     dem_tiles = gpd.GeoDataFrame(
         dem_tile_bounds,
         columns = ['lidar_file','bounds']
     )
 
+    print(dem_tiles)
+
     dem_tiles.geometry = dem_tiles['bounds'].apply(
         lambda bounds: box(*bounds)
     )
+
+    print(dem_tiles)
 
     if new_coverage_file is not None:
         dem_tiles.to_file(str(new_coverage_file))
