@@ -1059,7 +1059,7 @@ def find_and_append_subdirectory(
 
     parent_directory = Path(str(
         dem_tile_projects_parent_directory
-    )).joinpath(PurePath(str(project))
+    )).joinpath(PurePath(str(project)))
 
     projects = find_subdirectory(
         projects,
