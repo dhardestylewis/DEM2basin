@@ -1149,7 +1149,7 @@ def get_bounding_boxes_by_project(
             rasterio.open(dem_tilename).bounds
         ))
 
-    dem_tiles = gpd.DataFrame(
+    dem_tiles = gpd.GeoDataFrame(
         dem_tile_bounds,
         columns = ['lidar_file','bounds']
     )
