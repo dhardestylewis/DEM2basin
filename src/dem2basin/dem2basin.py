@@ -1001,7 +1001,7 @@ def get_coverage_by_shape(
     shape = read_file_or_gdf(shape_input)
     coverage = read_file_or_gdf(coverage_input)
 
-    coverage = coverage.loc[gpd.overlay(coverage,shape,how='intersection').index]
+    coverage = coverage.loc[gpd.overlay(coverage,shape.to_crs(coverage.crs),how='intersection').index]
 
     return(coverage)
 
@@ -1076,11 +1076,12 @@ def get_bounding_boxes_from_coverage_by_shape(
     dem_tile_projects_parent_directory
 ):
 
+    shape = read_file_or_gdf(shape_input)
     coverage = read_file_or_gdf(coverage_input)
 
     coverage = dissolve_coverage_file_by_project(coverage)
 
-    project_coverage = get_coverage_by_shape(shape_input,coverage)
+    project_coverage = get_coverage_by_shape(shape,coverage)
 
     dem_tiles = get_bounding_boxes_by_project(
         project_coverage,
