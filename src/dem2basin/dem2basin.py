@@ -1001,7 +1001,7 @@ def get_coverage_by_shape(
     shape = read_file_or_gdf(shape_input)
     coverage = read_file_or_gdf(coverage_input)
 
-    coverage = coverage.loc[coverage.overlay(shape,how='intersection').index]
+    coverage = coverage.loc[gpd.overlay(coverage,shape,how='intersection').index]
 
     return(coverage)
 
