@@ -1658,7 +1658,7 @@ def try_except_for_huc(function,huc_id):
 
     return(result)
 
-def get_projections_of_each_file(lidar_projects_with_counts)
+def get_projections_of_each_file(lidar_projects_with_counts):
 
     lidar_projects_with_counts['crs'] = lidar_projects_with_counts[
         'lidar_file'
