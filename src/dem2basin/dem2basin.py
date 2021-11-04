@@ -1138,10 +1138,15 @@ def get_bounding_boxes_by_project(
     dem_tilenames = []
     filetypes = ('*.img', '*.dem', '*.tif', '*.jp2')
     for filetype in filetypes:
+        print(filetype)
         for project in projects:
+            print(project)
             for root, dirs, filenames in os.walk(str(project)):
+                print(root,dirs,filenames)
                 for filename in filenames:
+                    print(filename)
                     if filename.endswith(filetype):
+                        print(True)
                         dem_tilenames.append(os.path.join(root,filename))
 
     print(dem_tilenames)
