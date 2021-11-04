@@ -1026,7 +1026,12 @@ def get_coverage_by_shape(
     ## '/scratch/projects/tnris/dhl-flood-modelling/TNRIS-LIDAR-Availabilty-20210812.shp'
     coverage = read_file_or_gdf(coverage_input)
 
-    coverage = coverage.loc[gpd.overlay(coverage,shape.to_crs(coverage.crs),how='intersection').index]
+    coverage = _drop_index_columns(coverage)
+    shape = _drop_index_columns(shape)
+
+    coverage = coverage.loc[
+        gpd.sjoin(coverage,shape.to_crs(coverage.crs),how='inner',op='intersects').index
+    ]
 
     return(coverage)
 
