@@ -1119,7 +1119,7 @@ def get_bounding_boxes_by_project(
     project_coverage = read_file_or_gdf(project_coverage_input)
 
     projects = []
-    for project in project_coverage.index():
+    for project in project_coverage.index:
         projects = append_subdirectory(
             projects,
             dem_tile_projects_parent_directory,
