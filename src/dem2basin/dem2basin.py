@@ -986,7 +986,20 @@ def index_fathom_files(
 def dissolve_coverage_file_by_project(
     coverage_input
 ):
+    """
+    from a coverage vector image of different DEM tile projects, dissolve
+    tile-polygons to their projects
+    
+    requires project attribute to be named 'dirname'
 
+    :param coverage_input: vector image of each DEM tile's coverage
+    :type coverage_input: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+    :return: geopandas.GeoDataFrame of DEM tiles dissolved by their project
+    :rtype: geopandas.GeoDataFrame
+    """
+    
+    ## for example, on TACC's Stampede2:
+    ## '/scratch/projects/tnris/dhl-flood-modelling/TNRIS-LIDAR-Availabilty-20210812.shp'
     coverage = read_file_or_gdf(coverage_input)
 
     project_coverage = coverage.dissolve(by=['dirname'])
@@ -997,24 +1010,81 @@ def get_coverage_by_shape(
     shape_input,
     coverage_input
 ):
+    """
+    gets intersection of coverage vector image with study area of interest
+    
+    :param shape_input: vector image of a study area of interest
+    :type shape_input: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+    :param coverage_input: vector image of each DEM tile's coverage
+    :type coverage_input: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+    :return: geopandas.GeoDataFrame of DEM tiles dissolved by their project
+    :rtype: geopandas.GeoDataFrame
+    """
 
     shape = read_file_or_gdf(shape_input)
+    ## for example, on TACC's Stampede2:
+    ## '/scratch/projects/tnris/dhl-flood-modelling/TNRIS-LIDAR-Availabilty-20210812.shp'
     coverage = read_file_or_gdf(coverage_input)
 
     coverage = coverage.loc[gpd.overlay(coverage,shape.to_crs(coverage.crs),how='intersection').index]
 
     return(coverage)
 
-def append_subdirectory(
+def find_and_append_subdirectory(
     projects,
     dem_tile_projects_parent_directory,
     project,
     subdirectory
 ):
+    """
+    helper function to find specific subdirectories of a parent directory
+    
+    :param projects: Sequence of directory absolute paths which contain DEM tiles
+    :type projects: Sequence
+    :param dem_tile_projects_parent_directory: Parent directory containing
+        DEM tile project directories
+    :type dem_tile_projects_parent_directory: Union[str,pathlib.PurePath]
+    :param project: DEM tile project directory
+    :type project: Union[str,pathlib.PurePath]
+    :param subdirectory: Directory name which contains DEM tiles
+    :type subdirectory: Union[str,pathlib.PurePath]
+    :return: Sequence of directory absolute paths which contain DEM tiles
+    :rtype: Sequence
+    """
+
+    parent_directory = Path(str(
+        dem_tile_projects_parent_directory
+    )).joinpath(PurePath(str(project))
+
+    projects = find_subdirectory(
+        projects,
+        parent_directory,
+        subdirectory
+    )
+
+    return(projects)
+
+def find_subdirectory(
+    projects,
+    parent_directory,
+    subdirectory
+):
+    """
+    helper function to find specific subdirectories of a parent directory
+    
+    :param projects: Sequence of directory absolute paths which contain DEM tiles
+    :type projects: Sequence
+    :param parent_directory: DEM tile project directory
+    :type parent_directory: Union[str,pathlib.PurePath]
+    :param subdirectory: Directory name which contains DEM tiles
+    :type subdirectory: Union[str,pathlib.PurePath]
+    :return: Sequence of directory absolute paths which contain DEM tiles
+    :rtype: Sequence
+    """
 
     project_subdirectory = Path(str(
-        dem_tile_projects_parent_directory
-    )).joinpath(PurePath(str(project),str(subdirectory)))
+        parent_directory
+    )).joinpath(str(subdirectory)))
 
     if project_subdirectory.is_dir():
         projects.append(project_subdirectory)
@@ -1023,8 +1093,23 @@ def append_subdirectory(
 
 def get_bounding_boxes_by_project(
     project_coverage_input,
-    dem_tile_projects_parent_directory
+    dem_tile_projects_parent_directory,
+    new_coverage_file = None
 ):
+    """
+    gets DEM tile bounding boxes for given DEM tile projects
+    
+    :param project_coverage_input: vector image of DEM tile projects
+    :type project_coverage_input: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+    :param dem_tile_projects_parent_directory: Parent directory containing
+        DEM tile project directories
+    :type dem_tile_projects_parent_directory: Union[str,pathlib.PurePath]
+    :param new_coverage_file: New coverage file from DEM tile bounding boxes found
+    :type new_coverage_file: Union[str,pathlib.PurePath]
+    :return: geopandas.GeoDataFrame of DEM tile bounding box polygons for given
+        DEM tile projects
+    :rtype: geopandas.GeoDataFrame
+    """
 
     project_coverage = read_file_or_gdf(project_coverage_input)
 
@@ -1068,15 +1153,37 @@ def get_bounding_boxes_by_project(
         lambda bounds: box(*bounds)
     )
 
+    if new_coverage_file is not None:
+        dem_tiles.to_file(str(new_coverage_file))
+
     return(dem_tiles)
 
 def get_bounding_boxes_from_coverage_by_shape(
     shape_input,
     coverage_input,
-    dem_tile_projects_parent_directory
+    dem_tile_projects_parent_directory,
+    new_coverage_file = None
 ):
+    """
+    gets DEM tile bounding boxes for given DEM tile projects
+    
+    :param shape_input: vector image of a study area of interest
+    :type shape_input: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+    :param coverage_input: vector image of each DEM tile's coverage
+    :type coverage_input: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+    :param dem_tile_projects_parent_directory: Parent directory containing
+        DEM tile project directories
+    :type dem_tile_projects_parent_directory: Union[str,pathlib.PurePath]
+    :param new_coverage_file: New coverage file from DEM tile bounding boxes found
+    :type new_coverage_file: Union[str,pathlib.PurePath]
+    :return: geopandas.GeoDataFrame of DEM tile bounding box polygons for given
+        DEM tile projects
+    :rtype: geopandas.GeoDataFrame
+    """
 
     shape = read_file_or_gdf(shape_input)
+    ## for example, on TACC's Stampede2:
+    ## '/scratch/projects/tnris/dhl-flood-modelling/TNRIS-LIDAR-Availabilty-20210812.shp'
     coverage = read_file_or_gdf(coverage_input)
 
     coverage = dissolve_coverage_file_by_project(coverage)
@@ -1085,7 +1192,8 @@ def get_bounding_boxes_from_coverage_by_shape(
 
     dem_tiles = get_bounding_boxes_by_project(
         project_coverage,
-        dem_tile_projects_parent_directory
+        dem_tile_projects_parent_directory,
+        new_coverage_file = new_coverage_file
     )
 
     return(dem_tiles)
