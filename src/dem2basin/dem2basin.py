@@ -1007,10 +1007,14 @@ def get_coverage_by_shape(
 
 def append_subdirectory(
     projects,
+    dem_tile_projects_parent_directory,
+    project,
     subdirectory
 ):
 
-    project_subdirectory = Path(str(project)).joinpath(subdirectory)
+    project_subdirectory = Path(str(
+        dem_tile_projects_parent_directory
+    )).joinpath(PurePath(str(project),str(subdirectory)))
 
     if project_subdirectory.is_dir():
         projects.append(project_subdirectory)
@@ -1018,15 +1022,26 @@ def append_subdirectory(
     return(projects)
 
 def get_bounding_boxes_by_project(
-    project_coverage_input
+    project_coverage_input,
+    dem_tile_projects_parent_directory
 ):
 
     project_coverage = read_file_or_gdf(project_coverage_input)
 
     projects = []
     for project in project_coverage.index():
-        projects = append_subdirectory(projects,'dem')
-        projects = append_subdirectory(projects,'tiles')
+        projects = append_subdirectory(
+            projects,
+            dem_tile_projects_parent_directory,
+            project,
+            'dem'
+        )
+        projects = append_subdirectory(
+            projects,
+            dem_tile_projects_parent_directory,
+            project,
+            'tiles'
+        )
             
     dem_tilenames = []
     filetypes = ('*.img', '*.dem', '*.tif', '*.jp2')
@@ -1057,7 +1072,8 @@ def get_bounding_boxes_by_project(
 
 def get_bounding_boxes_from_coverage_by_shape(
     shape_input,
-    coverage_input
+    coverage_input,
+    dem_tile_projects_parent_directory
 ):
 
     coverage = read_file_or_gdf(coverage_input)
@@ -1066,7 +1082,10 @@ def get_bounding_boxes_from_coverage_by_shape(
 
     project_coverage = get_coverage_by_shape(shape_input,coverage)
 
-    dem_tiles = get_bounding_boxes_by_project(project_coverage)
+    dem_tiles = get_bounding_boxes_by_project(
+        project_coverage,
+        dem_tile_projects_parent_directory
+    )
 
     return(dem_tiles)
 
