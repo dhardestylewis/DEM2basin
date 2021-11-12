@@ -1120,13 +1120,13 @@ def get_bounding_boxes_by_project(
 
     projects = []
     for project in project_coverage.index:
-        projects = append_subdirectory(
+        projects = find_and_append_subdirectory(
             projects,
             dem_tile_projects_parent_directory,
             project,
             'dem'
         )
-        projects = append_subdirectory(
+        projects = find_and_append_subdirectory(
             projects,
             dem_tile_projects_parent_directory,
             project,
