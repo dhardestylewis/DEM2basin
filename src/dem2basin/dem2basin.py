@@ -233,6 +233,9 @@ def _drop_index_columns(
     :param dataframe: pandas.DataFrame possibly
         with 'index', 'index_left', or 'index_right' columns
     :type dataframe: pandas.DataFrame
+    :param inplace: do operation inplace
+        Defaults to False.
+    :type inplace: bool
     :return: pandas.DataFrame without 'index', 'index_left', 'index_right'
         columns
     :rtype: pandas.DataFrame
@@ -305,7 +308,8 @@ def set_index_to_huc(
         column named "HUC[0-9]*"
     :type hucs: Union[str,pathlib.PurePath,pandas.DataFrame]
     :param sort: boolean to sort or not sort the resulting
-        geopandas.GeoDataFrame. Defaults to True.
+        geopandas.GeoDataFrame.
+        Defaults to True.
     :type sort: bool
     :return: geopandas.GeoDataFrame with index set to HUC attribute
     :rtype: geopandas.GeoDataFrame
@@ -368,17 +372,21 @@ def get_hucs_by_shape(
         "HUC[0-9]*"
     :type hucs: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
     :param hucs_layer: optional name of HUC layer,
-        for example "HUC12", "HUC8", "HUC6", "HUC4", etc. Defaults to None.
+        for example "HUC12", "HUC8", "HUC6", "HUC4", etc.
+        Defaults to None.
     :type hucs_layer: str
     :param sort: boolean to sort output by HUC ID
+        Defaults to True.
     :type sort: bool
     :param select_utm: integer for UTM zone to explicitly select.
         Defaults to None.
     :type select_utm: int
-    :param to_utm: boolean to reproject to UTM or not. Defaults to True.
+    :param to_utm: boolean to reproject to UTM or not.
+        Defaults to True.
     :type to_utm: bool
     :param drop_index_columns: boolean to drop columns named 'index',
-        'index_left', 'index_right' from output. Defaults to True.
+        'index_left', 'index_right' from output.
+        Defaults to True.
     :type drop_index_columns: bool
     :return: geopandas.GeoDataFrame of HUCs that cover area of interest
     :rtype: geopandas.GeoDataFrame
@@ -431,7 +439,8 @@ def set_and_sort_index(
         pandas.DataFrame
     :type column: str
     :param drop: boolean whether to drop original column the index
-        is being set to. Defaults to True.
+        is being set to.
+        Defaults to True.
     :type drop: bool
     :return: pandas.DataFrame with index set to column attribute and sorted by
         that new index
@@ -443,7 +452,10 @@ def set_and_sort_index(
 
     return(dataframe)
 
-def index_dataframe_by_dataframe(dataframe_left,dataframe_right):
+def index_dataframe_by_dataframe(
+    dataframe_left,
+    dataframe_right
+):
     """
     indexes a dataframe by another dataframe
 
@@ -484,10 +496,12 @@ def get_nhd_by_shape(
         Default is None.
     :type layer: str
     :param drop_index_columns: boolean whether to drop columns named 'index',
-        'index_left', 'index_right' from the output. Default is True.
+        'index_left', 'index_right' from the output.
+        Default is True.
     :type drop_index_columns: bool
     :param comid_column: column name of the COMID attribute in NHD MR,
-        for example 'COMID' or 'FEATUREID'. Default is None.
+        for example 'COMID' or 'FEATUREID'.
+        Default is None.
     :type comid_column: str
     :param fix_invalid_geometries: boolean to fix invalid geometries in output.
         Default is False.
@@ -529,7 +543,8 @@ def get_representative_points(
     :param hucs: geopandas.GeoDataFrame of HUCs with column named 'HUC'
     :type hucs: geopandas.GeoDataFrame
     :param drop_index_columns: boolean whether to drop columns named 'index',
-        'index_left', 'index_right'. Default is True.
+        'index_left', 'index_right'.
+        Default is True.
     :type drop_index_columns: bool
     :param set_index_to_comid: boolean whether to set index to COMID column.
         Default is False.
@@ -581,8 +596,10 @@ def set_roughness_by_streamorder(
         stream order column attribute
     :type flowlines_original: geopandas.GeoDataFrame
     :param streamorder_col: column name of stream order attribute
+        Defaults to 'StreamOrde'.
     :type streamorder_col: str
     :param roughness_col: column name of Manning's n roughness attribute
+        Defaults to 'Roughness'.
     :type roughness_col: str
     :return: geopandas.GeoDataFrame of flowlines with the Manning's n roughness
         column set by stream order
@@ -618,6 +635,7 @@ def clip_dataframe_by_attribute(
         attribute
     :type dataframe_with_attribute: pandas.DataFrame
     :param attribute: attribute column name
+        Defaults to None.
     :type attribute: str
     :return: new pandas.DataFrame with attribute merged
     :rtype: pandas.DataFrame
@@ -640,7 +658,9 @@ def clip_dataframe_by_attribute(
 
     return(dataframe)
 
-def find_common_utm(shape_original):
+def find_common_utm(
+    shape_original
+):
     """
     determines the mode of the UTMs of the representative points of a
     geodataframe’s geometries
@@ -678,6 +698,14 @@ def find_utm(
 ):
     """
     finds a single UTM CRS best suited for the geometries of a geodataframe
+
+    :param gdf_original: geopandas.GeoDataFrame 
+    :type gdf_original: geopandas.GeoDataFrame
+    :param select_utm: integer for UTM zone to explicitly select.
+        Defaults to None.
+    :type select_utm: int
+    :return: new pandas.DataFrame with attribute merged
+    :rtype: pandas.DataFrame
     """
     ## Buffer the catchments for each HUC
 
@@ -729,9 +757,24 @@ def find_utm(
 
     return(crs)
 
-def reproject_and_buffer(gdf_original,crs,meters_buffered=500.):
+def reproject_and_buffer(
+    gdf_original,
+    crs,
+    meters_buffered = 500.
+):
     """
     reprojects geodataframe to a CRS and then buffers it
+
+    :param gdf_original: integer for UTM zone to explicitly select.
+        Defaults to None.
+    :type gdf_original: geopandas.GeoDataFrame
+    :param crs: coordinate reference system to project to.
+    :type crs: pyproj.crs.CRS
+    :param meters_buffered: buffer in meters.
+        Defaults to 500.
+    :type meters_buffered: float
+    :return: new geopandas.GeoDataFrame reprojected and buffered.
+    :rtype: geopandas.GeoDataFrame
     """
 
     gdf = gdf_original.to_crs(crs)
@@ -740,9 +783,22 @@ def reproject_and_buffer(gdf_original,crs,meters_buffered=500.):
 
     return(gdf)
 
-def reproject_to_utm_and_buffer(gdf_original,select_utm=None):
+def reproject_to_utm_and_buffer(
+    gdf_original,
+    select_utm = None
+):
     """
     finds best UTM for a geodataframe, reprojects, and then buffers it
+
+    :param gdf_original: integer for UTM zone to explicitly select.
+        Defaults to None.
+    :type gdf_original: geopandas.GeoDataFrame
+    :param select_utm: integer for UTM zone to explicitly select.
+        Defaults to None.
+    :type select_utm: int
+    :return: new geopandas.GeoDataFrame reprojected to
+        UTM coordinate system and buffered.
+    :rtype: geopandas.GeoDataFrame
     """
     ## Reproject a GeoDataFrame to the most common UTM and then buffer it
 
@@ -751,13 +807,33 @@ def reproject_to_utm_and_buffer(gdf_original,select_utm=None):
 
     return(gdf)
 
-def get_filelist_from_parent_directory(parent_directory):
+def get_filelist_from_parent_directory(
+    parent_directory
+):
+    """
+    lists files in directory
+
+    :param parent_directory: directory to list
+    :type parent_directory: Union[str,pathlib.PurePath]
+    :return: list of files in parent_directory
+    :rtype: list[pathlib.PurePath]
+    """
 
     filelist = Path(str(parent_directory)).glob('*')
 
     return(filelist)
 
-def get_data_polygon_for_raster(raster_filename):
+def get_data_polygon_for_raster(
+    raster_filename
+):
+    """
+    polygonizes raster where raster pixel values have data
+
+    :param raster_filename: filename of raster to polygonize
+    :type raster_filename: Union[str,pathlib.PurePath]
+    :return: geopandas.GeoDataFrame of shapely.MultiPolygon of data values
+    :rtype: geopandas.GeoDataFrame
+    """
 
     with rasterio.open(str(raster_filename)) as src:
 
@@ -779,7 +855,18 @@ def get_data_polygon_for_raster(raster_filename):
 
     return(gpd_polygonized_raster)
 
-def get_data_polygons_for_each_raster(raster_filelist):
+def get_data_polygons_for_each_raster(
+    raster_filelist
+):
+    """
+    polygonizes rasters where each raster's pixel values have data
+
+    :param raster_filelist: iterable of filenames of raster to polygonize
+    :type raster_filelist: Iterator[Union[str,pathlib.PurePath]]
+    :return: list of geopandas.GeoDataFrames of shapely.MultiPolygon
+        of data values
+    :rtype: list[geopandas.GeoDataFrame]
+    """
 
     polygonized_rasters = []
 
@@ -798,8 +885,26 @@ def find_raster_filenames(
     get_epsg = False
 #    get_geographic_crs = False
 ):
+    """
+    finds DEM raster filenames within Lidar project parent directory
 
-    filetypes = ('*.img', '*.dem', '*.tif')
+    :param parent_directory: Lidar DEM tile project parent directory
+    :type parent_directory: Union[str,pathlib.PurePath]
+    :param get_filesizes: get the filesizes of each DEM tile
+        Defaults to False.
+    :type get_filesizes: bool
+    :param get_crs: get the CRS of each DEM tile
+        Defaults to False.
+    :type get_crs: bool
+    :param get_epsg: get the EPSG of each DEM tile
+        Defaults to False.
+    :type get_epsg: bool
+    :return: pandas.DataFrame of DEM tiles within project
+        and requested metadata
+    :rtype: pandas.DataFrame
+    """
+
+    filetypes = ('*.img', '*.dem', '*.tif', '*.jp2')
 
     fathom_filenames = []
     for filetype in filetypes:
@@ -857,7 +962,7 @@ def index_fathom_files(
 #    get_geographic_crs = False
 ):
     """
-    Georeference Fathom 3m raster dataset, with option to associate by HUC
+    georeference Fathom 3m raster dataset, with option to associate by HUC
     
     :param fathom_parent_directory: str or pathlib.PurePath of Fathom3m parent
         directory, expected to contain a directory named 'dem' under which the
@@ -866,19 +971,29 @@ def index_fathom_files(
     :param hucs: filename, pathlib.PurePath, or geopandas.GeoDataFrame of 
         HUCs. If provided, modifies output geopandas.GeoDataFrame to intersect
         availability file with HUCs, usually resulting in repeated filename rows
-        for adjacent HUCs. Defaults to None.
+        for adjacent HUCs.
+        Defaults to None.
     :type hucs: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
     :param availability_file: input filename of existing Fathom3m availability
-        file. Defaults to None.
+        file.
+        Defaults to None.
     :type availability_file: str
     :param new_availability_file: output filename of availability with found.
         Defaults to None.
     :type new_availability_file: str
     :param drop_index_columns: boolean whether to drop columns names 'index',
-        'index_left', or 'index_right' from output. Defaults to True.
+        'index_left', or 'index_right' from output.
+        Defaults to True.
     :type drop_index_columns: bool
-    :param get_filesizes: get the filesizes of each 
+    :param get_filesizes: get the filesizes of each DEM tile
+        Defaults to False.
     :type get_filesizes: bool
+    :param get_crs: get the CRS of each DEM tile
+        Defaults to False.
+    :type get_crs: bool
+    :param get_epsg: get the EPSG of each DEM tile
+        Defaults to False.
+    :type get_epsg: bool
     :return: geopandas.GeoDataFrame with filenames found in the Fathom3m parent
         directory
     :rtype: geopandas.GeoDataFrame
@@ -1101,16 +1216,36 @@ def find_subdirectory(
 
     return(projects)
 
-def open_raster(filename):
+def open_raster(
+    filename
+):
+    """
+    helper function to open rasters or skip individual rasters if read error
+    
+    :param filename: raster filename
+    :type filename: Union[str,pathlib.PurePath]
+    :return: rasterio.io.DatasetReader of raster opened in read mode or None
+    :rtype: Union[rasterio.io.DatasetReader,None]
+    """
 
     try:
-        raster = rasterio.open(filename)
+        raster = rasterio.open(str(filename))
     except:
-        pass
+        raster = None
 
     return(raster)
 
-def prepare_dataframe_for_output(dataframe):
+def prepare_dataframe_for_output(
+    dataframe
+):
+    """
+    drop or modify columns that cannot be output in a vector image by geopandas
+
+    :param dataframe: pandas.DataFrame to correct
+    :type dataframe: pandas.DataFrame
+    :return: pandas.DataFrame of corrected dataframe for output
+    :rtype: pandas.DataFrame
+    """
 
     dataframe.drop(columns=['bounds'],inplace=True)
 
@@ -1133,7 +1268,8 @@ def get_bounding_boxes_by_project(
     :param dem_tile_projects_parent_directory: Parent directory containing
         DEM tile project directories
     :type dem_tile_projects_parent_directory: Union[str,pathlib.PurePath]
-    :param new_coverage_file: New coverage file from DEM tile bounding boxes found
+    :param new_coverage_file: New coverage file from DEM tile bounding boxes
+        Defaults to None.
     :type new_coverage_file: Union[str,pathlib.PurePath]
     :return: geopandas.GeoDataFrame of DEM tile bounding box polygons for given
         DEM tile projects
@@ -1169,10 +1305,13 @@ def get_bounding_boxes_by_project(
     dst_crs = 'EPSG:6317'
 
     for gdf in list_of_gdfs_of_tilenames:
-        gdf['bounds'] = gdf['filename_absolute'].apply(
-            lamdba fn : open_raster(fn).bounds
+        gdf['raster'] = gdf['filename_absolute'].apply(
+            lambda fn : open_raster(fn)
         )
-        gdf.dropna(subset=['bounds'],inplace=True)
+        gdf.dropna(subset=['raster'],inplace=True)
+        gdf['bounds'] = gdf['filename_absolute'].apply(
+            lambda raster : raster.bounds
+        )
         gdf.geometry = gdf['bounds'].apply(lambda bounds : box(*bounds))
         for i in range(gdf.shape[0]):
             try:
@@ -1211,7 +1350,8 @@ def get_bounding_boxes_by_project_original(
     :param dem_tile_projects_parent_directory: Parent directory containing
         DEM tile project directories
     :type dem_tile_projects_parent_directory: Union[str,pathlib.PurePath]
-    :param new_coverage_file: New coverage file from DEM tile bounding boxes found
+    :param new_coverage_file: New coverage file from DEM tile bounding boxes
+        Defaults to None.
     :type new_coverage_file: Union[str,pathlib.PurePath]
     :return: geopandas.GeoDataFrame of DEM tile bounding box polygons for given
         DEM tile projects
@@ -1283,7 +1423,8 @@ def get_bounding_boxes_from_coverage_by_shape(
     :param dem_tile_projects_parent_directory: Parent directory containing
         DEM tile project directories
     :type dem_tile_projects_parent_directory: Union[str,pathlib.PurePath]
-    :param new_coverage_file: New coverage file from DEM tile bounding boxes found
+    :param new_coverage_file: New coverage file from DEM tile bounding boxes
+        Defaults to None.
     :type new_coverage_file: Union[str,pathlib.PurePath]
     :return: geopandas.GeoDataFrame of DEM tile bounding box polygons for given
         DEM tile projects
@@ -1318,6 +1459,25 @@ class LidarIndex():
         lidar_availability_file = None,
         lidar_parent_directory = None
     ):
+        """
+        Georeference TNRIS LIDAR 1m raster dataset
+        
+        :param hucs: filename, pathlib.PurePath, or geopandas.GeoDataFrame of 
+            HUCs. If provided, modifies output geopandas.GeoDataFrame to
+            intersect availability file with HUCs, usually resulting in repeated
+            filename rows for adjacent HUCs.
+            Defaults to None.
+        :type hucs: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
+        :param lidar_availability_file: input filename of existing Lidar
+            availability file.
+            Defaults to None.
+        :type lidar_availability_file: str
+        :param lidar_parent_directory: str or pathlib.PurePath of TX Lidar
+            parent directory, expected to contain a directory named 'dem' under
+            which the filenames are found
+            Defaults to None.
+        :type lidar_parent_directory: Union[str,pathlib.PurePath]
+        """
 
         if hucs is None:
             self.hucs = gpd.GeoDataFrame()
@@ -1353,16 +1513,18 @@ class LidarIndex():
             HUCs. If provided, modifies output geopandas.GeoDataFrame to
             intersect availability file with HUCs, usually resulting in repeated
             filename rows for adjacent HUCs.
+            Defaults to None.
         :type hucs: Union[str,pathlib.PurePath,geopandas.GeoDataFrame]
-        :param availability_file: input filename of existing Lidar
+        :param lidar_availability_file: input filename of existing Lidar
             availability file.
-        :type availability_file: str
-        :param new_availability_file: output filename of availability with
-            found. Defaults to None.
-        :type new_availability_file: str
+        :type lidar_availability_file: str
+        :param new_lidar_availability_file: output filename of availability with
+            found.
+            Defaults to None.
+        :type new_lidar_availability_file: str
         :param drop_index_columns: boolean whether to drop columns names
-            'index', 'index_left', or 'index_right' from output. Defaults to
-            True.
+            'index', 'index_left', or 'index_right' from output.
+            Defaults to True.
         :type drop_index_columns: bool
         :return: geopandas.GeoDataFrame with filenames found in the Lidar parent
             directory
@@ -1436,18 +1598,46 @@ class LidarIndex():
 
         return(availability)
     
-class ExceptionWrapper(object):
+class ExceptionWrapper(
+    object
+):
+    """
+    default exception handler that guarantees that the exception is raised
+    """
 
-    def __init__(self, ee):
+    def __init__(
+        self,
+        ee
+    ):
+        """
+        default exception handler that guarantees that the exception is raised
+
+        :param ee: exception
+        :type ee: BaseException
+        """
+
         self.ee = ee
         __, __, self.tb = sys.exc_info()
 
-    def re_raise(self):
+    def re_raise(
+        self
+    ):
+        """
+        guarantee exception is raised
+
+        :raises BaseException: exception
+        """
+
         raise(self.ee.with_traceback(self.tb))
 
-def delete_file(filename):
+def delete_file(
+    filename
+):
     """
     deletes a file in all versions of Python
+
+    :param filename: path of file to delete
+    :type filename: Union[str,pathlib.PurePath]
     """
 
     try:
@@ -1458,9 +1648,21 @@ def delete_file(filename):
     except:
         pass
 
-def skip_function_if_file_exists(function,filename,skip_existing=True):
+def skip_function_if_file_exists(
+    function,
+    filename,
+    skip_existing = True
+):
     """
     wrapper to skip a particular step in a workflow if a file already exists
+
+    :param function: function to skip if file is found
+    :type function: Callable
+    :param filename: path of file to check
+    :type filename: Union[str,pathlib.PurePath]
+    :param skip_existing: flag to skip function if filename is found
+        Defaults to True.
+    :type skip_existing: bool
     """
 
     filename = Path(str(filename))
@@ -1478,6 +1680,23 @@ def _write_geodataframe(
     driver = 'ESRI Shapefile',
     drop_index = False
 ):
+    """
+    wrapper to write vector image to filepath
+
+    :param geodataframe: geopandas.GeoDataFrame to write as a vector image
+    :type geodataframe: geopandas.GeoDataFrame
+    :param filename: path of vector image file to write
+    :type filename: Union[str,pathlib.PurePath]
+    :param reset_index: reset index of geodataframe before writing
+        Defaults to True.
+    :type reset_index: bool
+    :param driver: OGR format driver to write the vector file
+        Defaults to 'ESRI Shapefile'.
+    :type driver: str
+    :param drop_index: drop index of geodataframe before writing
+        Defaults to False.
+    :type drop_index: bool
+    """
 
     if reset_index:
         geodataframe = geodataframe.reset_index(drop=drop_index)
@@ -1600,7 +1819,11 @@ def get_flowlines_and_representative_points_by_huc(
 
     return(flowlines,flowline_representative_points)
 
-def get_catchments_by_huc(hucs,nhd_input,flowline_representative_points):
+def get_catchments_by_huc(
+    hucs,
+    nhd_input,
+    flowline_representative_points
+):
     """
     assigns HUCs to NHD catchments
     """
@@ -1621,7 +1844,9 @@ def get_catchments_by_huc(hucs,nhd_input,flowline_representative_points):
 
     return(catchments)
 
-def get_hucs_from_catchments(catchments):
+def get_hucs_from_catchments(
+    catchments
+):
     """
     dissolves NHD catchments into HUC equivalents
     """
@@ -1632,7 +1857,10 @@ def get_hucs_from_catchments(catchments):
 
     return(hucs)
 
-def to_crs(crs,geodataframes):
+def to_crs(
+    crs,
+    geodataframes
+):
     """
     reprojects multiples geodataframes simultaneously
     """
@@ -1640,7 +1868,11 @@ def to_crs(crs,geodataframes):
     for geodataframe in geodataframes:
         geodataframe.to_crs(crs,inplace=True)
 
-def extend_lidar_index(lidar_index,raster,vrt_filename):
+def extend_lidar_index(
+    lidar_index,
+    raster,
+    vrt_filename
+):
     ## Check each raster's resolution in this HUC
 
     #if any(np.float16(i) > 1. for i in var.res):
@@ -1718,7 +1950,10 @@ def reproject_append(
 
     return(mosaic_metadata)
 
-def close_rasters(raster,delete_rasters=False):
+def close_rasters(
+    raster,
+    delete_rasters = False
+):
 
     for raster in rasters:
 
@@ -1730,7 +1965,10 @@ def close_rasters(raster,delete_rasters=False):
         if delete_rasters:
             delete_file(raster.name)
 
-def write_error_file_and_print_message(filename,message):
+def write_error_file_and_print_message(
+    filename,
+    message
+):
 
     Path(str(filename)).touch()
     print(message)
@@ -1814,7 +2052,9 @@ def reproject_raster(
     )
     warp = None
 
-def isiterable(theElement):
+def isiterable(
+    theElement
+):
 
     try:
         iterator = iter(theElement)
@@ -1846,7 +2086,9 @@ def reproject_rasters(
             dst_crs = dst_crs_inner
         )
 
-def timing(f):
+def timing(
+    f
+):
     ## Influenced by:
     ## Attribution-ShareAlike 4.0 International (CC BY-SA 4.0) 2011 Mike Lewis
     ## https://stackoverflow.com/a/5478448/16518080
@@ -1860,7 +2102,10 @@ def timing(f):
     ))
     return((ret,elapsed_time))
 
-def try_except_for_huc(function,huc_id):
+def try_except_for_huc(
+    function,
+    huc_id
+):
 
     ## TODO: test and implement this function
     try:
@@ -1895,7 +2140,9 @@ def try_except_for_huc(function,huc_id):
 
     return(result)
 
-def get_projections_of_each_file(lidar_projects_with_counts):
+def get_projections_of_each_file(
+    lidar_projects_with_counts
+):
 
     lidar_projects_with_counts['crs'] = lidar_projects_with_counts[
         'lidar_file'
@@ -1903,7 +2150,9 @@ def get_projections_of_each_file(lidar_projects_with_counts):
         lambda fn: pyproj.CRS.from_wkt(gdal.Open(fn).GetProjection())
     )
 
-def count_lidar_projects_in_lidar_index(lidar_index_by_huc):
+def count_lidar_projects_in_lidar_index(
+    lidar_index_by_huc
+):
 
     lidar_index_by_project_grouped = lidar_index_by_huc.groupby('dirname')
     lidar_index_by_project = [
@@ -2324,7 +2573,11 @@ def _get_mosaic_and_output_raster_dev(
         huc_prefix
     )
 
-def get_mosaic_dev(lidar_index,vrt_options,directory):
+def get_mosaic_dev(
+    lidar_index,
+    vrt_options,
+    directory
+):
 
     filenames = lidar_index['lidar_file'].to_list()
 
@@ -2476,7 +2729,12 @@ def get_mosaic(
         mosaic_tuple = (mosaic,out_meta)
         return(break_hu,mosaic_tuple)
 
-def mask_raster_dev(raster,meta,mask_geometry,memoryfile=False):
+def mask_raster_dev(
+    raster,
+    meta,
+    mask_geometry,
+    memoryfile = False
+):
 
     if memoryfile:
         function = raster
@@ -2682,7 +2940,10 @@ def make_directories_and_error_files(
         rasternotenclosed_path
     )
 
-def make_parent_directories(filenames):
+def make_parent_directories(
+    filenames
+):
+
     for filename in filenames:
         Path(str(filename)).parent.mkdir(parents=True, exist_ok=True)
 
@@ -2854,7 +3115,10 @@ def output_geoflood_gis_inputs(
         )
 
 #@profile
-def output_files(arguments,return_dict):
+def output_files(
+    arguments,
+    return_dict
+):
 #def output(flow_key,flowshu12shape,catchshu12shape,hu12catchs,lidar_index,args,prefix,dst_crs,mem_estimates):
     ## Output catchments, flowlines, roughnesses, and rasters
 
@@ -3164,7 +3428,11 @@ class TaskProcessor(Thread):
                         
             time.sleep(.005)
 
-def get_merged_column(column,dataframes,sort=True):
+def get_merged_column(
+    column,
+    dataframes,
+    sort = True
+):
     """
     returns the mutual elements of an identically names column in multiple dataframes
     """
@@ -3182,7 +3450,10 @@ def get_merged_column(column,dataframes,sort=True):
 
     return(mutual_row_values)
 
-def get_mutual_column_elements_of_dataframes(dataframes,column='HUC'):
+def get_mutual_column_elements_of_dataframes(
+    dataframes,
+    column = 'HUC'
+):
 
     setlist = []
     for dataframe in dataframes:
@@ -3192,7 +3463,11 @@ def get_mutual_column_elements_of_dataframes(dataframes,column='HUC'):
 
     return(dataframes)
 
-def get_dataframes_with_elements_in_column(dataframes,elements,column='HUC'):
+def get_dataframes_with_elements_in_column(
+    dataframes,
+    elements,
+    column = 'HUC'
+):
 
     new_dataframes = []
 
@@ -3283,12 +3558,18 @@ def get_flowlines_and_catchments_by_shape(
 
     return(flowlines,catchments)
 
-def sort_values(column,geodataframes):
+def sort_values(
+    column,
+    geodataframes
+):
 
     for geodataframe in geodataframes:
         geodataframe.sort_values(by=column,inplace=True)
 
-def pickle_multiple_objects(pickle_file,objects):
+def pickle_multiple_objects(
+    pickle_file,
+    objects
+):
 
     with open(pickle_file, 'wb') as output:
         pickle.dump(
@@ -3297,7 +3578,9 @@ def pickle_multiple_objects(pickle_file,objects):
             pickle.HIGHEST_PROTOCOL
         )
 
-def unpickle_multiple_objects(pickle_file):
+def unpickle_multiple_objects(
+    pickle_file
+):
 
     with open(pickle_file, 'rb') as input:
         objects = pickle.load(input)
@@ -3416,7 +3699,10 @@ def list_geodataframes_grouped_by_column(
 
     return(lists_of_geodataframes)
 
-def sort_lists_of_geodataframes_by_index(geodataframes,index):
+def sort_lists_of_geodataframes_by_index(
+    geodataframes,
+    index
+):
 
     sorted_geodataframes = []
 
